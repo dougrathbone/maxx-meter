@@ -1,0 +1,10 @@
+# MaxxMeter — Sonoff NSPanel EU (480×320 landscape)
+# Flash with ESPHome, then OTA-upload maxxmeter_eu.tft
+
+substitutions:
+  name: maxxmeter-eu
+  friendly_name: MaxxMeter EU
+  device_profile: nspanel-eu
+
+packages:
+  maxxmeter_base: !include maxxmeter-base.yaml

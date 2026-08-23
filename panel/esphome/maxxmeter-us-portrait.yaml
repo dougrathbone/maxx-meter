@@ -1,0 +1,10 @@
+# MaxxMeter — Sonoff NSPanel US portrait (320×480)
+# Flash with ESPHome, then OTA-upload maxxmeter_us_portrait.tft
+
+substitutions:
+  name: maxxmeter-us
+  friendly_name: MaxxMeter US
+  device_profile: nspanel-us-portrait
+
+packages:
+  maxxmeter_base: !include maxxmeter-base.yaml
