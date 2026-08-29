@@ -5,6 +5,7 @@ substitutions:
   name: maxxmeter-eu
   friendly_name: MaxxMeter EU
   device_profile: nspanel-eu
+  nextion_update_url: !secret nextion_update_url_eu
 
 packages:
   maxxmeter_base: !include maxxmeter-base.yaml

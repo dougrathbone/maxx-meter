@@ -22,9 +22,28 @@ type Panel = {
   apiKey: string;
   lastSeenAt?: string;
 };
+type Me = { userId: string; userName: string; isAdmin: boolean };
+type DashboardUser = { userId: string; userName: string };
+type Settings = {
+  pollIntervalSeconds: number;
+  warnPct: number;
+  criticalPct: number;
+  mqtt: {
+    host: string;
+    port: number;
+    username: string;
+    password: string;
+    topicPrefix: string;
+  };
+  ha: { url: string; token: string };
+};
+
+const ADMIN_USER_KEY = "maxxmeter-admin-user";
 
 const app = document.getElementById("app")!;
 let page = "overview";
+let me: Me | null = null;
+let adminUsers: DashboardUser[] = [];
 
 document.querySelectorAll(".nav").forEach((btn) => {
   btn.addEventListener("click", () => {
@@ -44,6 +63,58 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+function getSelectedUserId(): string {
+  if (!me?.isAdmin) return me?.userId ?? "default";
+  return sessionStorage.getItem(ADMIN_USER_KEY) ?? me.userId;
+}
+
+function isImpersonating(): boolean {
+  return me?.isAdmin === true && getSelectedUserId() !== me.userId;
+}
+
+function userQuery(): string {
+  if (!isImpersonating()) return "";
+  return `?userId=${encodeURIComponent(getSelectedUserId())}`;
+}
+
+function getSelectedUserName(): string {
+  const id = getSelectedUserId();
+  if (id === me?.userId) return me.userName;
+  return adminUsers.find((u) => u.userId === id)?.userName ?? id;
+}
+
+function updateImpersonationBanner(): void {
+  const banner = document.getElementById("impersonation-banner");
+  if (!banner) return;
+  if (isImpersonating()) {
+    banner.hidden = false;
+    banner.textContent = `Viewing as ${getSelectedUserName()}`;
+  } else {
+    banner.hidden = true;
+    banner.textContent = "";
+  }
+}
+
+function renderUserSwitcher(): void {
+  const container = document.getElementById("user-switcher");
+  if (!container || !me?.isAdmin) return;
+
+  const options = adminUsers
+    .map(
+      (u) =>
+        `<option value="${u.userId}"${u.userId === getSelectedUserId() ? " selected" : ""}>${u.userName}</option>`,
+    )
+    .join("");
+
+  container.innerHTML = `<label>User <select id="admin-user-select">${options}</select></label>`;
+  document.getElementById("admin-user-select")?.addEventListener("change", (ev) => {
+    const select = ev.target as HTMLSelectElement;
+    sessionStorage.setItem(ADMIN_USER_KEY, select.value);
+    updateImpersonationBanner();
+    void render();
+  });
+}
+
 function barColor(pct: number, warn: number, critical: number): string {
   if (pct >= critical) return "var(--red)";
   if (pct >= warn) return "var(--yellow)";
@@ -56,7 +127,7 @@ function bar(label: string, pct: number, warn: number, critical: number): string
 }
 
 async function renderOverview(): Promise<string> {
-  const usage = await api<Snapshot[]>("/api/dashboard/usage");
+  const usage = await api<Snapshot[]>(`/api/dashboard/usage${userQuery()}`);
   if (!usage.length) {
     return `<div class="card"><p>No accounts yet. Add one on the <strong>Accounts</strong> tab.</p></div>`;
   }
@@ -75,7 +146,7 @@ async function renderOverview(): Promise<string> {
 }
 
 async function renderAccounts(): Promise<string> {
-  const accounts = await api<Account[]>("/api/dashboard/accounts");
+  const accounts = await api<Account[]>(`/api/dashboard/accounts${userQuery()}`);
   const list = accounts
     .map(
       (a) => `<div class="card" data-account="${a.id}" data-provider="${a.provider}">
@@ -93,7 +164,9 @@ async function renderAccounts(): Promise<string> {
     )
     .join("");
 
-  return `${list}
+  const addAccount =
+    !isImpersonating()
+      ? `${list}
     <div class="card">
       <h3>Add account</h3>
       <div class="row">
@@ -102,11 +175,14 @@ async function renderAccounts(): Promise<string> {
         <button class="primary" id="add-account">Add</button>
       </div>
       <p class="muted">Claude supports OAuth Connect. Cursor and Kimi use token paste for now.</p>
-    </div>`;
+    </div>`
+      : `${list}<div class="card"><p class="muted">Switch to your own user to add accounts.</p></div>`;
+
+  return addAccount;
 }
 
 async function renderPanels(): Promise<string> {
-  const panels = await api<Panel[]>("/api/dashboard/panels");
+  const panels = await api<Panel[]>(`/api/dashboard/panels${userQuery()}`);
   const list = panels
     .map(
       (p) => `<div class="card">
@@ -125,7 +201,9 @@ panel_api_key: ${p.apiKey}</code></pre>
     )
     .join("");
 
-  return `${list}
+  const addPanel =
+    !isImpersonating()
+      ? `${list}
     <div class="card">
       <h3>Register panel</h3>
       <div class="row">
@@ -136,13 +214,52 @@ panel_api_key: ${p.apiKey}</code></pre>
         </select>
         <button class="primary" id="add-panel">Add panel</button>
       </div>
-    </div>`;
+    </div>`
+      : `${list}<div class="card"><p class="muted">Switch to your own user to register panels.</p></div>`;
+
+  return addPanel;
 }
 
 async function renderSettings(): Promise<string> {
   try {
-    const s = await api<Record<string, unknown>>("/api/dashboard/settings");
-    return `<div class="card"><pre>${JSON.stringify(s, null, 2)}</pre><p class="muted">Edit via add-on options or PUT /api/dashboard/settings (admin).</p></div>`;
+    const s = await api<Settings>("/api/dashboard/settings");
+    const pwdPlaceholder = s.mqtt.password === "***" ? "***" : "";
+    const tokenPlaceholder = s.ha.token === "***" ? "***" : "";
+    return `<div class="card">
+      <h3>Global settings</h3>
+      <form id="settings-form" class="form-grid">
+        <label>Poll interval (seconds)
+          <input type="number" id="pollIntervalSeconds" min="60" value="${s.pollIntervalSeconds}" />
+        </label>
+        <label>Warn threshold (%)
+          <input type="number" id="warnPct" min="0" max="100" value="${s.warnPct}" />
+        </label>
+        <label>Critical threshold (%)
+          <input type="number" id="criticalPct" min="0" max="100" value="${s.criticalPct}" />
+        </label>
+        <div class="form-section">
+          <h4>MQTT</h4>
+          <div class="form-grid">
+            <label>Host <input type="text" id="mqtt-host" value="${s.mqtt.host}" /></label>
+            <label>Port <input type="number" id="mqtt-port" value="${s.mqtt.port}" /></label>
+            <label>Username <input type="text" id="mqtt-username" value="${s.mqtt.username}" /></label>
+            <label>Password <input type="password" id="mqtt-password" placeholder="${pwdPlaceholder}" autocomplete="new-password" /></label>
+            <label>Topic prefix <input type="text" id="mqtt-topicPrefix" value="${s.mqtt.topicPrefix}" /></label>
+          </div>
+        </div>
+        <div class="form-section">
+          <h4>Home Assistant</h4>
+          <div class="form-grid">
+            <label>URL <input type="text" id="ha-url" value="${s.ha.url}" /></label>
+            <label>Token <input type="password" id="ha-token" placeholder="${tokenPlaceholder}" autocomplete="new-password" /></label>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="primary">Save settings</button>
+          <p id="settings-status" class="form-status muted"></p>
+        </div>
+      </form>
+    </div>`;
   } catch {
     return `<div class="card"><p class="muted">Settings visible to HA admins only.</p></div>`;
   }
@@ -157,7 +274,10 @@ async function render(): Promise<void> {
     } else if (page === "panels") {
       app.innerHTML = await renderPanels();
       bindPanelActions();
-    } else app.innerHTML = await renderSettings();
+    } else {
+      app.innerHTML = await renderSettings();
+      bindSettingsActions();
+    }
   } catch (err) {
     app.innerHTML = `<div class="card"><p>Failed to load: ${err instanceof Error ? err.message : err}</p></div>`;
   }
@@ -262,5 +382,61 @@ function bindPanelActions(): void {
   });
 }
 
-void render();
+function bindSettingsActions(): void {
+  document.getElementById("settings-form")?.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const status = document.getElementById("settings-status");
+    const mqttPassword = (document.getElementById("mqtt-password") as HTMLInputElement).value;
+    const haToken = (document.getElementById("ha-token") as HTMLInputElement).value;
+    const body = {
+      pollIntervalSeconds: Number(
+        (document.getElementById("pollIntervalSeconds") as HTMLInputElement).value,
+      ),
+      warnPct: Number((document.getElementById("warnPct") as HTMLInputElement).value),
+      criticalPct: Number((document.getElementById("criticalPct") as HTMLInputElement).value),
+      mqtt: {
+        host: (document.getElementById("mqtt-host") as HTMLInputElement).value,
+        port: Number((document.getElementById("mqtt-port") as HTMLInputElement).value),
+        username: (document.getElementById("mqtt-username") as HTMLInputElement).value,
+        password: mqttPassword || "***",
+        topicPrefix: (document.getElementById("mqtt-topicPrefix") as HTMLInputElement).value,
+      },
+      ha: {
+        url: (document.getElementById("ha-url") as HTMLInputElement).value,
+        token: haToken || "***",
+      },
+    };
+    try {
+      await api("/api/dashboard/settings", { method: "PUT", body: JSON.stringify(body) });
+      if (status) {
+        status.textContent = "Settings saved.";
+        status.style.color = "var(--green)";
+      }
+    } catch (err) {
+      if (status) {
+        status.textContent = err instanceof Error ? err.message : "Save failed";
+        status.style.color = "var(--red)";
+      }
+    }
+  });
+}
+
+async function init(): Promise<void> {
+  me = await api<Me>("/api/dashboard/me");
+  if (me.isAdmin) {
+    adminUsers = await api<DashboardUser[]>("/api/dashboard/users");
+    if (!adminUsers.some((u) => u.userId === me!.userId)) {
+      adminUsers.push({ userId: me.userId, userName: me.userName });
+      adminUsers.sort((a, b) => a.userName.localeCompare(b.userName));
+    }
+    if (!sessionStorage.getItem(ADMIN_USER_KEY)) {
+      sessionStorage.setItem(ADMIN_USER_KEY, me.userId);
+    }
+    renderUserSwitcher();
+  }
+  updateImpersonationBanner();
+  void render();
+}
+
+void init();
 setInterval(() => void render(), 60_000);

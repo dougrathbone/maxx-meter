@@ -3,6 +3,7 @@
 
 substitutions:
   panel_poll_interval: "60s"
+  nextion_update_url: ""
 
 esphome:
   name: ${name}
@@ -46,6 +47,7 @@ display:
     uart_id: uart_nextion
     update_interval: never
     auto_wake_on: never
+    tft_url: ${nextion_update_url}
 
 http_request:
   id: http_req
@@ -98,5 +100,6 @@ binary_sensor:
 
 sensor:
   - platform: wifi_signal
+    id: wifi_signal
     name: "${friendly_name} WiFi Signal"
     update_interval: 60s

@@ -6,6 +6,7 @@ import {
   createAccount,
   deleteAccount,
   getAccount,
+  listAccounts,
   listAccountsForUser,
 } from "../accounts/registry.js";
 import { deleteCredential, getCredential, saveCredential } from "../auth/vault.js";
@@ -50,15 +51,31 @@ export async function createDashboardServer(poller: UsagePoller) {
     return { userId: user.userId, userName: user.userName, isAdmin: user.isAdmin };
   });
 
+  app.get("/api/dashboard/users", async (req, reply) => {
+    const user = resolveUserFromRequest(req);
+    if (!user.isAdmin) return reply.code(403).send({ error: "admin only" });
+    const accounts = await listAccounts();
+    const byUser = new Map<string, string>();
+    for (const a of accounts) {
+      if (!byUser.has(a.ownerUserId)) {
+        byUser.set(a.ownerUserId, a.ownerUserName ?? a.ownerUserId);
+      }
+    }
+    return [...byUser.entries()]
+      .map(([userId, userName]) => ({ userId, userName }))
+      .sort((a, b) => a.userName.localeCompare(b.userName));
+  });
+
   app.get<{ Querystring: { userId?: string } }>("/api/dashboard/usage", async (req) => {
     const user = resolveUserFromRequest(req);
     const target = resolveTargetUserId(user, req.query.userId);
     return poller.getSnapshotsForUser(target);
   });
 
-  app.get("/api/dashboard/accounts", async (req) => {
+  app.get<{ Querystring: { userId?: string } }>("/api/dashboard/accounts", async (req) => {
     const user = resolveUserFromRequest(req);
-    const accounts = await listAccountsForUser(user.userId);
+    const target = resolveTargetUserId(user, req.query.userId);
+    const accounts = await listAccountsForUser(target);
     const enriched = await Promise.all(
       accounts.map(async (a) => ({
         ...a,
@@ -151,9 +168,10 @@ export async function createDashboardServer(poller: UsagePoller) {
     },
   );
 
-  app.get("/api/dashboard/panels", async (req) => {
+  app.get<{ Querystring: { userId?: string } }>("/api/dashboard/panels", async (req) => {
     const user = resolveUserFromRequest(req);
-    return listPanelsForUser(user.userId);
+    const target = resolveTargetUserId(user, req.query.userId);
+    return listPanelsForUser(target);
   });
 
   app.post<{
@@ -246,17 +264,24 @@ export async function createDashboardServer(poller: UsagePoller) {
     if (!user.isAdmin) return reply.code(403).send({ error: "admin only" });
     const current = await loadSettings();
     const body = req.body ?? {};
+    const mqttBody = body.mqtt as { password?: string } | undefined;
+    const haBody = body.ha as { token?: string } | undefined;
     const next = {
       ...current,
       ...body,
-      mqtt: { ...current.mqtt, ...(body.mqtt as object) },
+      mqtt: {
+        ...current.mqtt,
+        ...(body.mqtt as object),
+        password:
+          mqttBody?.password === "***"
+            ? current.mqtt.password
+            : (mqttBody?.password ?? current.mqtt.password),
+      },
       ha: {
         ...current.ha,
         ...(body.ha as object),
         token:
-          (body.ha as { token?: string })?.token === "***"
-            ? current.ha.token
-            : ((body.ha as { token?: string })?.token ?? current.ha.token),
+          haBody?.token === "***" ? current.ha.token : (haBody?.token ?? current.ha.token),
       },
     };
     await saveSettings(next);

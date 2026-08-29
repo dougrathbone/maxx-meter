@@ -38,10 +38,17 @@ Design `.HMI` files in Nextion Editor to match component names used in ESPHome:
 |-----------|---------|
 | `t0` | Account / title label |
 | `t1` | Status line (`S:xx% W:yy%`) |
-| `j0` | Session usage progress (0–100) |
-| `j1` | Weekly usage progress (0–100) |
+| `t2` | Session reset time (detail) |
+| `t3` | Weekly reset time (detail) |
+| `t4` | WiFi status (status page) |
+| `t5` | Last poll time (status page) |
+| `t6` | Provider name (detail) |
+| `j0` | Session usage progress (0–100, overview) |
+| `j1` | Weekly usage progress (0–100, overview) |
+| `j2` | Session bar mirror (detail) |
+| `j3` | Weekly bar mirror (detail) |
 
-See `panel/nextion/README.md` for Editor workflow.
+See layout specs: [maxxmeter-eu-layout.md](../nextion/maxxmeter-eu-layout.md), [maxxmeter-us-portrait-layout.md](../nextion/maxxmeter-us-portrait-layout.md).
 
 ## Regenerating API keys
 
