@@ -16,7 +16,7 @@ import {
   startClaudeOAuth,
 } from "../auth/claude-oauth.js";
 import { loadSettings, saveSettings } from "../config.js";
-import { ProviderIdSchema } from "../models.js";
+import { GlobalSettingsSchema, ProviderIdSchema } from "../models.js";
 import type { UsagePoller } from "../poller.js";
 import {
   createPanel,
@@ -266,7 +266,7 @@ export async function createDashboardServer(poller: UsagePoller) {
     const body = req.body ?? {};
     const mqttBody = body.mqtt as { password?: string } | undefined;
     const haBody = body.ha as { token?: string } | undefined;
-    const next = {
+    const next = GlobalSettingsSchema.parse({
       ...current,
       ...body,
       mqtt: {
@@ -283,8 +283,10 @@ export async function createDashboardServer(poller: UsagePoller) {
         token:
           haBody?.token === "***" ? current.ha.token : (haBody?.token ?? current.ha.token),
       },
-    };
+    });
     await saveSettings(next);
+    poller.restart();
+    void poller.pollOnce();
     return { ok: true };
   });
 

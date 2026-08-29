@@ -1,0 +1,62 @@
+name: Prepare Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Semver bump type
+        required: true
+        type: choice
+        default: patch
+        options:
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: write
+
+jobs:
+  bump-and-tag:
+    name: Bump version and tag
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump semver
+        id: bump
+        run: |
+          npm version "${{ inputs.bump }}" --no-git-tag-version
+          VERSION=$(node -p "require('./package.json').version")
+          node scripts/sync-version.mjs "$VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Commit version bump
+        run: |
+          git add package.json package-lock.json dashboard/package.json maxxmeter/config.yaml
+          git diff --staged --quiet && echo "No changes" && exit 1
+          git commit -m "chore(release): v${{ steps.bump.outputs.version }}"
+
+      - name: Create and push tag
+        run: |
+          git tag "v${{ steps.bump.outputs.version }}"
+          git push origin main
+          git push origin "v${{ steps.bump.outputs.version }}"
+
+      - name: Summary
+        run: |
+          echo "## Release v${{ steps.bump.outputs.version }} triggered" >> "$GITHUB_STEP_SUMMARY"
+          echo "The Release workflow will build, test, publish GitHub Release notes, and push \`ghcr.io/${{ github.repository }}:${{ steps.bump.outputs.version }}\`." >> "$GITHUB_STEP_SUMMARY"

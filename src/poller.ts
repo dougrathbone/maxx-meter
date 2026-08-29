@@ -1,4 +1,5 @@
 import { listAccounts } from "./accounts/registry.js";
+import { resolveCredential, retryCredentialAfterAuthExpired } from "./auth/credential-fresh.js";
 import { getCredential } from "./auth/vault.js";
 import type { GlobalSettings, UsageSnapshot } from "./models.js";
 import { getProvider } from "./providers/index.js";
@@ -38,13 +39,21 @@ export class UsagePoller {
       const results: UsageSnapshot[] = [];
 
       for (const account of accounts) {
-        const credential = await getCredential(account.id);
+        let credential = await getCredential(account.id);
         if (!credential) {
           results.push(disconnectedSnapshot(account, settings));
           continue;
         }
+        credential = await resolveCredential(account, credential);
         const provider = getProvider(account.provider);
-        results.push(await provider.fetchUsage(account, credential, settings));
+        let snap = await provider.fetchUsage(account, credential, settings);
+        if (snap.status === "auth_expired") {
+          const refreshed = await retryCredentialAfterAuthExpired(account, credential);
+          if (refreshed) {
+            snap = await provider.fetchUsage(account, refreshed, settings);
+          }
+        }
+        results.push(snap);
       }
 
       this.cache = results;
@@ -58,10 +67,18 @@ export class UsagePoller {
   start(): void {
     if (this.timer) return;
     void this.pollOnce();
-    void this.getSettings().then((s) => {
-      const intervalMs = Math.max(300, s.pollIntervalSeconds) * 1000;
-      this.timer = setInterval(() => void this.pollOnce(), intervalMs);
-    });
+    void this.scheduleInterval();
+  }
+
+  restart(): void {
+    this.stop();
+    this.start();
+  }
+
+  private async scheduleInterval(): Promise<void> {
+    const s = await this.getSettings();
+    const intervalMs = Math.max(300, s.pollIntervalSeconds) * 1000;
+    this.timer = setInterval(() => void this.pollOnce(), intervalMs);
   }
 
   stop(): void {

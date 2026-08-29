@@ -186,6 +186,20 @@ textarea {
   font-size: 0.85rem;
 }
 
+.checkbox-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0.5rem 0;
+}
+
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+}
+
 code {
   background: #0f1419;
   padding: 0.15rem 0.35rem;

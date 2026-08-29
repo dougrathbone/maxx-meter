@@ -182,14 +182,32 @@ async function renderAccounts(): Promise<string> {
 }
 
 async function renderPanels(): Promise<string> {
-  const panels = await api<Panel[]>(`/api/dashboard/panels${userQuery()}`);
+  const [panels, accounts] = await Promise.all([
+    api<Panel[]>(`/api/dashboard/panels${userQuery()}`),
+    api<Account[]>(`/api/dashboard/accounts${userQuery()}`),
+  ]);
+
+  const accountOptions = (panel: Panel) =>
+    accounts
+      .map(
+        (a) =>
+          `<label class="checkbox-row"><input type="checkbox" data-panel-account="${panel.id}" value="${a.id}"${panel.accountIds.includes(a.id) ? " checked" : ""} /> ${a.label} <span class="muted">(${a.provider})</span></label>`,
+      )
+      .join("");
+
   const list = panels
     .map(
-      (p) => `<div class="card">
+      (p) => `<div class="card" data-panel="${p.id}">
       <div class="row"><strong>${p.label}</strong><span class="muted">${p.deviceProfile}</span></div>
       <p class="muted">Panel ID: <code>${p.id}</code></p>
       <p class="muted">API key: <code>${p.apiKey}</code></p>
       <p class="muted">Last seen: ${p.lastSeenAt ?? "never"}</p>
+      <div class="form-section">
+        <h4>Displayed accounts</h4>
+        <p class="muted">Leave all unchecked to show every connected account on this panel.</p>
+        <div class="checkbox-list">${accountOptions(p) || '<p class="muted">No accounts yet.</p>'}</div>
+        <button class="primary" data-save-panel-accounts="${p.id}">Save accounts</button>
+      </div>
       <pre class="muted"><code>collector_host: homeassistant.local
 panel_id: ${p.id}
 panel_api_key: ${p.apiKey}</code></pre>
@@ -369,6 +387,22 @@ function bindPanelActions(): void {
     btn.addEventListener("click", async () => {
       const id = (btn as HTMLButtonElement).dataset.deletePanel!;
       await api(`/api/dashboard/panels/${id}`, { method: "DELETE" });
+      void render();
+    });
+  });
+
+  document.querySelectorAll("[data-save-panel-accounts]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const panelId = (btn as HTMLButtonElement).dataset.savePanelAccounts!;
+      const checked = [
+        ...document.querySelectorAll<HTMLInputElement>(
+          `input[data-panel-account="${panelId}"]:checked`,
+        ),
+      ].map((el) => el.value);
+      await api(`/api/dashboard/panels/${panelId}`, {
+        method: "PUT",
+        body: JSON.stringify({ accountIds: checked }),
+      });
       void render();
     });
   });

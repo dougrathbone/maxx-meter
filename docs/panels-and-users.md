@@ -4,13 +4,14 @@
 
 - Each HA user sees only **their** accounts and panels in the ingress dashboard.
 - MQTT entities are published under `maxxmeter/<ownerUserId>/...` (configurable prefix).
-- HA admins can manage global settings; user switcher UI is planned for a future release.
+- HA admins get a **user switcher** in the dashboard header to view and manage any user's accounts and panels.
 
 Dev fallback (no ingress headers):
 
 ```bash
 MAXXMETER_DEV_USER_ID=dev-user
 MAXXMETER_DEV_USER_NAME=Developer
+MAXXMETER_DEV_IS_ADMIN=true
 ```
 
 ## Multi-panel
@@ -28,7 +29,11 @@ GET http://<collector_host>:8765/api/v1/panels/<panelId>/usage
 Authorization: Bearer <apiKey>
 ```
 
-The response includes usage for all accounts owned by the panel's registering user (filtered server-side).
+The response includes usage for accounts assigned to the panel (or all accounts if none selected).
+
+### Panel account filter
+
+In **Panels**, check the accounts each wall panel should show. Uncheck all to include every connected account. The panel API returns the first account in the filtered list on the overview page; use physical buttons to switch pages.
 
 ## Nextion TFT
 

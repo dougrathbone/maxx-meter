@@ -103,3 +103,24 @@ export function claudeExpiresAt(expiresIn?: number): string | undefined {
   if (!expiresIn) return undefined;
   return new Date(Date.now() + expiresIn * 1000).toISOString();
 }
+
+export async function refreshClaudeOAuthToken(
+  refreshToken: string,
+): Promise<ClaudeTokenResponse> {
+  const res = await fetch(CLAUDE_TOKEN_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      grant_type: "refresh_token",
+      refresh_token: refreshToken,
+      client_id: CLAUDE_CLIENT_ID,
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Claude token refresh failed (${res.status}): ${text}`);
+  }
+
+  return (await res.json()) as ClaudeTokenResponse;
+}

@@ -1,5 +1,7 @@
 # MaxxMeter
 
+[![CI](https://github.com/dougrathbone/maxx-meter/actions/workflows/ci.yml/badge.svg)](https://github.com/dougrathbone/maxx-meter/actions/workflows/ci.yml)
+
 **Token maxxing, on your wall.**
 
 MaxxMeter turns classic Sonoff NSPanels (ESP32 + Nextion) into live AI subscription usage dashboards for **Cursor**, **Claude**, and **Kimi Coding** plans.
@@ -36,6 +38,10 @@ MAXXMETER_DEV_USER_ID=dev npm run dev
 ```bash
 npm test
 ```
+
+## Releasing
+
+See [docs/releasing.md](docs/releasing.md). Use **Actions → Prepare Release** for semver bumps, or push a `v*.*.*` tag to publish a GitHub Release and container image.
 
 ## License
 
