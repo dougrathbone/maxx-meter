@@ -78,15 +78,17 @@ async function renderAccounts(): Promise<string> {
   const accounts = await api<Account[]>("/api/dashboard/accounts");
   const list = accounts
     .map(
-      (a) => `<div class="card">
+      (a) => `<div class="card" data-account="${a.id}" data-provider="${a.provider}">
       <div class="row"><strong>${a.label}</strong><span class="muted">${a.provider}</span>
       <span class="muted">${a.connected ? "connected" : "disconnected"}</span></div>
       <div class="row" style="margin-top:0.5rem">
-        <input id="token-${a.id}" placeholder="Paste token / session cookie" style="flex:1;min-width:200px" />
-        <button class="primary" data-connect="${a.id}">Connect</button>
+        ${a.provider === "claude" ? `<button class="primary" data-oauth="${a.id}">OAuth Connect</button>` : ""}
+        <input id="token-${a.id}" placeholder="${a.provider === "cursor" ? "WorkosCursorSessionToken" : a.provider === "kimi" ? "sk-kimi-..." : "OAuth token or session key"}" style="flex:1;min-width:200px" />
+        <button class="primary" data-connect="${a.id}">Paste token</button>
         <button class="danger" data-disconnect="${a.id}">Disconnect</button>
         <button class="danger" data-delete="${a.id}">Delete</button>
       </div>
+      <div id="oauth-box-${a.id}" class="muted" style="display:none;margin-top:0.5rem"></div>
     </div>`,
     )
     .join("");
@@ -99,7 +101,7 @@ async function renderAccounts(): Promise<string> {
         <input id="new-label" placeholder="Label" />
         <button class="primary" id="add-account">Add</button>
       </div>
-      <p class="muted">OAuth connect flows coming soon — paste token or session cookie for now.</p>
+      <p class="muted">Claude supports OAuth Connect. Cursor and Kimi use token paste for now.</p>
     </div>`;
 }
 
@@ -171,6 +173,34 @@ function bindAccountActions(): void {
       body: JSON.stringify({ provider, label }),
     });
     void render();
+  });
+
+  document.querySelectorAll("[data-oauth]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const id = (btn as HTMLButtonElement).dataset.oauth!;
+      const start = await api<{ stateId: string; authorizationUrl: string; instructions: string }>(
+        `/api/auth/claude/start?accountId=${encodeURIComponent(id)}`,
+      );
+      window.open(start.authorizationUrl, "_blank");
+      const box = document.getElementById(`oauth-box-${id}`)!;
+      box.style.display = "block";
+      box.innerHTML = `<p>${start.instructions}</p>
+        <div class="row">
+          <input id="oauth-code-${id}" placeholder="Authorization code" style="flex:1" />
+          <button class="primary" data-oauth-submit="${id}" data-state="${start.stateId}">Submit code</button>
+        </div>`;
+      box.querySelector(`[data-oauth-submit="${id}"]`)?.addEventListener("click", async (ev) => {
+        const target = ev.currentTarget as HTMLButtonElement;
+        const code = (document.getElementById(`oauth-code-${id}`) as HTMLInputElement).value.trim();
+        const stateId = target.dataset.state!;
+        if (!code) return;
+        await api("/api/auth/claude/exchange", {
+          method: "POST",
+          body: JSON.stringify({ stateId, code }),
+        });
+        void render();
+      });
+    });
   });
 
   document.querySelectorAll("[data-connect]").forEach((btn) => {

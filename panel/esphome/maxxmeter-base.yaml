@@ -52,6 +52,9 @@ http_request:
   timeout: 10s
   verify_ssl: false
 
+packages:
+  display_logic: !include maxxmeter-display.yaml
+
 globals:
   - id: usage_json
     type: std::string
@@ -72,10 +75,7 @@ interval:
                   if (response->status_code == 200) {
                     id(usage_json) = body;
                   }
-      - lambda: |-
-          // Push parsed values to Nextion components (t0, j0, j1, etc.)
-          // Full JSON parsing requires ArduinoJson in a custom component — v0.1 stores raw JSON
-          id(nextion_display).set_component_text("t0", id(usage_json).c_str());
+      - script.execute: update_nextion_from_usage
 
 # Physical buttons — cycle pages / wake (wire to your TFT page names)
 binary_sensor:

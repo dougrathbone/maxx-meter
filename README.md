@@ -17,7 +17,7 @@ MaxxMeter turns classic Sonoff NSPanels (ESP32 + Nextion) into live AI subscript
 
 1. Add this repository to Home Assistant Add-on store (see [docs/setup.md](docs/setup.md))
 2. Install and start the **MaxxMeter** add-on
-3. Open the ingress dashboard → **Accounts** → connect providers
+3. Open the ingress dashboard → **Accounts** → [connect providers](docs/connect-accounts.md)
 4. **Panels** → register your NSPanel → copy ESPHome secrets
 5. Flash [panel/esphome/](panel/esphome/) and upload the matching Nextion TFT
 

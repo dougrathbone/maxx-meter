@@ -1,5 +1,6 @@
 import type { UsageSnapshot } from "./models.js";
 import { ingressPort, loadSettings, panelApiPort } from "./config.js";
+import { syncSettingsFromHaOptions } from "./config-sync.js";
 import { createDashboardServer } from "./api/dashboard.js";
 import { createPanelServer } from "./api/server.js";
 import { notifyAuthExpiredBatch } from "./ha/notify.js";
@@ -9,6 +10,7 @@ import { ensureDir, dataRoot } from "./storage.js";
 
 async function main(): Promise<void> {
   await ensureDir(dataRoot());
+  await syncSettingsFromHaOptions();
 
   const getSettings = loadSettings;
   const poller = new UsagePoller(getSettings);

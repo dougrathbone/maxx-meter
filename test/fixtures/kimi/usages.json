@@ -1,0 +1,16 @@
+{
+  "limits": [
+    {
+      "type": "TOKENS_LIMIT_5H",
+      "unit": 3,
+      "percentage": 55,
+      "reset_at": "2026-08-29T08:00:00Z"
+    },
+    {
+      "type": "TOKENS_LIMIT_WEEK",
+      "unit": 6,
+      "percentage": 22,
+      "resets_at": "2026-09-01T00:00:00Z"
+    }
+  ]
+}

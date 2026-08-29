@@ -1,0 +1,53 @@
+substitutions:
+  panel_poll_interval: "60s"
+
+# Extend globals in profile yaml if needed
+
+script:
+  - id: update_nextion_from_usage
+    then:
+      - lambda: |-
+          const std::string &json = id(usage_json);
+          if (json.empty()) {
+            id(nextion_display).set_component_text("t0", "No data");
+            return;
+          }
+          // Extract first account label (simple string parse — no ArduinoJson dep)
+          auto label_pos = json.find("\"label\":\"");
+          std::string label = "MaxxMeter";
+          if (label_pos != std::string::npos) {
+            auto start = label_pos + 9;
+            auto end = json.find("\"", start);
+            if (end != std::string::npos) label = json.substr(start, end - start);
+          }
+          id(nextion_display).set_component_text("t0", label.c_str());
+
+          auto extract_pct = [&](const char *key) -> int {
+            auto k = std::string("\"") + key + "\":";
+            auto p = json.find(k);
+            if (p == std::string::npos) return 0;
+            p += k.size();
+            return atoi(json.c_str() + p);
+          };
+
+          int session = 0;
+          int weekly = 0;
+          auto sid = json.find("\"id\":\"session\"");
+          if (sid != std::string::npos) {
+            auto sub = json.substr(sid, 120);
+            auto up = sub.find("\"usedPct\":");
+            if (up != std::string::npos) session = atoi(sub.c_str() + up + 10);
+          }
+          auto wid = json.find("\"id\":\"weekly\"");
+          if (wid != std::string::npos) {
+            auto sub = json.substr(wid, 120);
+            auto up = sub.find("\"usedPct\":");
+            if (up != std::string::npos) weekly = atoi(sub.c_str() + up + 10);
+          }
+
+          id(nextion_display).set_component_value("j0", session);
+          id(nextion_display).set_component_value("j1", weekly);
+
+          char status[48];
+          snprintf(status, sizeof(status), "S:%d%% W:%d%%", session, weekly);
+          id(nextion_display).set_component_text("t1", status);

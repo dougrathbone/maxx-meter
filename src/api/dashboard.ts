@@ -9,6 +9,11 @@ import {
   listAccountsForUser,
 } from "../accounts/registry.js";
 import { deleteCredential, getCredential, saveCredential } from "../auth/vault.js";
+import {
+  claudeExpiresAt,
+  exchangeClaudeOAuthCode,
+  startClaudeOAuth,
+} from "../auth/claude-oauth.js";
 import { loadSettings, saveSettings } from "../config.js";
 import { ProviderIdSchema } from "../models.js";
 import type { UsagePoller } from "../poller.js";
@@ -258,12 +263,78 @@ export async function createDashboardServer(poller: UsagePoller) {
     return { ok: true };
   });
 
-  // OAuth placeholder — redirects documented for future PKCE implementation
+  app.get<{ Querystring: { accountId?: string } }>(
+    "/api/auth/claude/start",
+    async (req, reply) => {
+      const user = resolveUserFromRequest(req);
+      const accountId = req.query.accountId;
+      if (!accountId) return reply.code(400).send({ error: "accountId required" });
+
+      const account = await getAccount(accountId);
+      if (!account) return reply.code(404).send({ error: "account not found" });
+      if (account.ownerUserId !== user.userId && !user.isAdmin) {
+        return reply.code(403).send({ error: "forbidden" });
+      }
+      if (account.provider !== "claude") {
+        return reply.code(400).send({ error: "not a claude account" });
+      }
+
+      const result = await startClaudeOAuth({
+        accountId: account.id,
+        ownerUserId: account.ownerUserId,
+      });
+      return result;
+    },
+  );
+
+  app.post<{ Body: { stateId?: string; code?: string } }>(
+    "/api/auth/claude/exchange",
+    async (req, reply) => {
+      const user = resolveUserFromRequest(req);
+      const stateId = req.body?.stateId?.trim();
+      const code = req.body?.code?.trim();
+      if (!stateId || !code) {
+        return reply.code(400).send({ error: "stateId and code required" });
+      }
+
+      try {
+        const result = await exchangeClaudeOAuthCode({ stateId, code });
+        const account = await getAccount(result.accountId);
+        if (!account) return reply.code(404).send({ error: "account not found" });
+        if (account.ownerUserId !== user.userId && !user.isAdmin) {
+          return reply.code(403).send({ error: "forbidden" });
+        }
+
+        await saveCredential({
+          accountId: result.accountId,
+          ownerUserId: result.ownerUserId,
+          provider: "claude",
+          authMethod: "oauth",
+          accessToken: result.access_token,
+          refreshToken: result.refresh_token,
+          expiresAt: claudeExpiresAt(result.expires_in),
+          connectedAt: new Date().toISOString(),
+        });
+        await poller.pollOnce();
+        return { ok: true, accountId: result.accountId };
+      } catch (err) {
+        return reply.code(400).send({
+          error: err instanceof Error ? err.message : "OAuth exchange failed",
+        });
+      }
+    },
+  );
+
+  // Cursor/Kimi: token paste fallback (OAuth requires provider-registered redirect URIs)
   app.get<{ Params: { provider: string } }>(
     "/api/auth/:provider/start",
     async (req, reply) => {
+      const provider = req.params.provider;
+      if (provider === "claude") {
+        return reply.code(400).send({ error: "Use /api/auth/claude/start?accountId=" });
+      }
       return reply.redirect(
-        `/accounts?oauth=pending&provider=${encodeURIComponent(req.params.provider)}`,
+        `/accounts?oauth=manual&provider=${encodeURIComponent(provider)}`,
       );
     },
   );

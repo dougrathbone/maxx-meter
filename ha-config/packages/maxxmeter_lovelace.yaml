@@ -1,0 +1,23 @@
+# Optional Lovelace entities card for MaxxMeter MQTT sensors
+# Include from configuration.yaml: !include packages/maxxmeter_lovelace.yaml
+# Adjust entity IDs to match your ownerUserId slug in MQTT discovery
+
+type: vertical-stack
+cards:
+  - type: markdown
+    content: "## MaxxMeter usage"
+  - type: glance
+    entities:
+      - entity: sensor.maxxmeter_claude_session
+        name: Claude session
+      - entity: sensor.maxxmeter_claude_weekly
+        name: Claude weekly
+      - entity: sensor.maxxmeter_cursor_session
+        name: Cursor session
+      - entity: sensor.maxxmeter_kimi_session
+        name: Kimi session
+  - type: history-graph
+    entities:
+      - entity: sensor.maxxmeter_claude_session
+      - entity: sensor.maxxmeter_cursor_session
+    hours_to_show: 24
