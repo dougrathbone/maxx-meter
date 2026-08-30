@@ -10,6 +10,12 @@ dashboard/dist/
 .env
 .env.*
 data/
+panel/esphome/secrets.yaml
+
+# Nextion starter binaries (download via OFFICE-PANEL-FLASH.md)
+panel/nextion/starter/*.hmi
+panel/nextion/starter/*.tft
+tools/Nexus/
 
 # OS
 .DS_Store

@@ -45,6 +45,8 @@ Set **vscope: global** on all ESPHome-updated components. Bar fill color (`.pco`
 
 If OTA TFT upload is not configured yet, use [NSPanel-Easy](https://edwardtfn.github.io/NSPanel-Easy/) or Nextion Editor serial upload, then switch to OTA for updates.
 
+**Office panel walkthrough:** [OFFICE-PANEL-FLASH.md](./OFFICE-PANEL-FLASH.md) — USB flash scripts, HA hosting at `192.168.1.7`, ESPHome secrets.
+
 ## Wire `nextion_update_url` in ESPHome
 
 Each profile YAML defines a substitution placeholder. Set it in `secrets.yaml` or override in the profile file:

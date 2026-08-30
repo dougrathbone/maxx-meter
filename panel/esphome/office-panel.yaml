@@ -1,0 +1,11 @@
+# Office panel — US portrait (320x480)
+# IMPORTANT: set `name` to match your existing ESPHome device name exactly.
+
+substitutions:
+  name: office-panel
+  friendly_name: Office panel
+  device_profile: nspanel-us-portrait
+  nextion_update_url: !secret nextion_update_url_us
+
+packages:
+  maxxmeter_base: !include maxxmeter-base.yaml
