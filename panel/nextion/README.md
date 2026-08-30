@@ -70,6 +70,6 @@ esphome run panel/esphome/maxxmeter-eu.yaml
 esphome run panel/esphome/maxxmeter-us-portrait.yaml
 ```
 
-Physical buttons (see `maxxmeter-base.yaml`): left → `page overview`, right → `page detail`.
+Physical buttons: **left** = previous account, **right** = next account. Use TFT touch for the **detail** page.
 
 Reference: [NSPanel-Easy TFT upload](https://edwardtfn.github.io/NSPanel-Easy/)

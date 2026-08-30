@@ -31,7 +31,7 @@ async function main(): Promise<void> {
   poller.start();
 
   const panelApp = createPanelServer(poller);
-  const dashboardApp = await createDashboardServer(poller);
+  const dashboardApp = await createDashboardServer(poller, mqtt);
 
   await panelApp.listen({ port: panelApiPort(), host: "0.0.0.0" });
   await dashboardApp.listen({ port: ingressPort(), host: "0.0.0.0" });

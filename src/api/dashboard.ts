@@ -18,6 +18,7 @@ import {
 import { loadSettings, saveSettings } from "../config.js";
 import { GlobalSettingsSchema, ProviderIdSchema } from "../models.js";
 import type { UsagePoller } from "../poller.js";
+import type { MqttPublisher } from "../mqtt/publisher.js";
 import {
   createPanel,
   deletePanel,
@@ -30,7 +31,7 @@ import { resolveTargetUserId, resolveUserFromRequest } from "../users/context.js
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 
-export async function createDashboardServer(poller: UsagePoller) {
+export async function createDashboardServer(poller: UsagePoller, mqtt?: MqttPublisher) {
   const app = Fastify({ logger: false });
 
   app.addHook("onRequest", async (req, reply) => {
@@ -287,6 +288,10 @@ export async function createDashboardServer(poller: UsagePoller) {
     await saveSettings(next);
     poller.restart();
     void poller.pollOnce();
+    if (mqtt) {
+      const latest = await loadSettings();
+      mqtt.reconnect(latest);
+    }
     return { ok: true };
   });
 

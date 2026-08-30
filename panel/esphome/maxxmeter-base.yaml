@@ -79,7 +79,7 @@ interval:
                   }
       - script.execute: update_nextion_from_usage
 
-# Physical buttons — cycle pages / wake (wire to your TFT page names)
+# Physical buttons — left: previous account, right: next account (touch TFT for detail page)
 binary_sensor:
   - platform: gpio
     pin:
@@ -88,7 +88,7 @@ binary_sensor:
       inverted: true
     name: "${friendly_name} Left Button"
     on_press:
-      - lambda: 'id(nextion_display).send_command("page overview");'
+      - script.execute: cycle_account_prev
   - platform: gpio
     pin:
       number: GPIO22
@@ -96,7 +96,7 @@ binary_sensor:
       inverted: true
     name: "${friendly_name} Right Button"
     on_press:
-      - lambda: 'id(nextion_display).send_command("page detail");'
+      - script.execute: cycle_account_next
 
 sensor:
   - platform: wifi_signal

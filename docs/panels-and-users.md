@@ -33,7 +33,7 @@ The response includes usage for accounts assigned to the panel (or all accounts 
 
 ### Panel account filter
 
-In **Panels**, check the accounts each wall panel should show. Uncheck all to include every connected account. The panel API returns the first account in the filtered list on the overview page; use physical buttons to switch pages.
+In **Panels**, check the accounts each wall panel should show. Uncheck all to include every connected account. Use the panel's **left/right buttons** to cycle between accounts on the overview page.
 
 ## Nextion TFT
 

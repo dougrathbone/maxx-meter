@@ -1,12 +1,16 @@
 substitutions:
   panel_poll_interval: "60s"
 
-# Extend globals in profile yaml if needed
-
 globals:
   - id: last_poll_at_ms
     type: uint32_t
     initial_value: '0'
+  - id: account_index
+    type: int
+    initial_value: "0"
+  - id: account_count
+    type: int
+    initial_value: "1"
 
 script:
   - id: update_nextion_from_usage
@@ -27,28 +31,28 @@ script:
             nx.set_component_foreground_color(comp, c);
           };
 
-          auto extract_int = [&](const char *key, int fallback) -> int {
+          auto extract_int = [&](const std::string &src, const char *key, int fallback) -> int {
             auto k = std::string("\"") + key + "\":";
-            auto p = json.find(k);
+            auto p = src.find(k);
             if (p == std::string::npos) return fallback;
-            return atoi(json.c_str() + p + k.size());
+            return atoi(src.c_str() + p + k.size());
           };
 
-          auto window_pct = [&](const char *win_id) -> int {
+          auto window_pct = [&](const std::string &acct, const char *win_id) -> int {
             auto marker = std::string("\"id\":\"") + win_id + "\"";
-            auto pos = json.find(marker);
+            auto pos = acct.find(marker);
             if (pos == std::string::npos) return 0;
-            auto sub = json.substr(pos, 160);
+            auto sub = acct.substr(pos, 160);
             auto up = sub.find("\"usedPct\":");
             if (up == std::string::npos) return 0;
             return atoi(sub.c_str() + up + 10);
           };
 
-          auto window_reset = [&](const char *win_id) -> std::string {
+          auto window_reset = [&](const std::string &acct, const char *win_id) -> std::string {
             auto marker = std::string("\"id\":\"") + win_id + "\"";
-            auto pos = json.find(marker);
+            auto pos = acct.find(marker);
             if (pos == std::string::npos) return "—";
-            auto sub = json.substr(pos, 200);
+            auto sub = acct.substr(pos, 200);
             auto rp = sub.find("\"resetsAt\":");
             if (rp == std::string::npos) return "—";
             rp = sub.find("\"", rp + 12);
@@ -62,14 +66,6 @@ script:
             return iso;
           };
 
-          int warn = extract_int("warnPct", 70);
-          int crit = extract_int("criticalPct", 90);
-
-          auto accounts_pos = json.find("\"accounts\":");
-          std::string acct_json = accounts_pos != std::string::npos
-                                    ? json.substr(accounts_pos)
-                                    : json;
-
           if (json.empty()) {
             nx.set_component_text("t0", "No data");
             nx.set_component_text("t1", "");
@@ -79,40 +75,85 @@ script:
 
           id(last_poll_at_ms) = millis();
 
+          int warn = extract_int(json, "warnPct", 70);
+          int crit = extract_int(json, "criticalPct", 90);
+
+          auto accounts_pos = json.find("\"accounts\":[");
+          std::string acct_section =
+              accounts_pos != std::string::npos ? json.substr(accounts_pos) : json;
+
+          int count = 0;
+          size_t scan = 0;
+          while ((scan = acct_section.find("\"accountId\":\"", scan)) != std::string::npos) {
+            count++;
+            scan += 13;
+          }
+          if (count == 0) count = 1;
+          id(account_count) = count;
+
+          int idx = id(account_index);
+          if (idx < 0) idx = 0;
+          if (idx >= count) idx = count - 1;
+          id(account_index) = idx;
+
+          std::string acct_json = acct_section;
+          scan = 0;
+          int current = 0;
+          size_t start = 0;
+          while ((scan = acct_section.find("\"accountId\":\"", scan)) != std::string::npos) {
+            if (current == idx) {
+              start = scan;
+              break;
+            }
+            current++;
+            scan += 13;
+          }
+
+          size_t end = acct_section.size();
+          scan = start + 13;
+          current = idx + 1;
+          while ((scan = acct_section.find("\"accountId\":\"", scan)) != std::string::npos) {
+            end = scan;
+            break;
+          }
+          if (acct_section.find("\"accountId\":\"") != std::string::npos) {
+            acct_json = acct_section.substr(start, end - start);
+          }
+
           std::string label = "MaxxMeter";
           auto label_pos = acct_json.find("\"label\":\"");
           if (label_pos != std::string::npos) {
-            auto start = label_pos + 9;
-            auto end = acct_json.find("\"", start);
-            if (end != std::string::npos) label = acct_json.substr(start, end - start);
+            auto ls = label_pos + 9;
+            auto le = acct_json.find("\"", ls);
+            if (le != std::string::npos) label = acct_json.substr(ls, le - ls);
           }
           nx.set_component_text("t0", label.c_str());
 
           std::string provider = "";
           auto prov_pos = acct_json.find("\"provider\":\"");
           if (prov_pos != std::string::npos) {
-            auto start = prov_pos + 12;
-            auto end = acct_json.find("\"", start);
-            if (end != std::string::npos) provider = acct_json.substr(start, end - start);
+            auto ps = prov_pos + 12;
+            auto pe = acct_json.find("\"", ps);
+            if (pe != std::string::npos) provider = acct_json.substr(ps, pe - ps);
           }
           nx.set_component_text("t6", provider.c_str());
 
-          int session = window_pct("session");
-          int weekly = window_pct("weekly");
+          int session = window_pct(acct_json, "session");
+          int weekly = window_pct(acct_json, "weekly");
 
           apply_bar("j0", session, warn, crit);
           apply_bar("j1", weekly, warn, crit);
           apply_bar("j2", session, warn, crit);
           apply_bar("j3", weekly, warn, crit);
 
-          char status[48];
-          snprintf(status, sizeof(status), "S:%d%% W:%d%%", session, weekly);
+          char status[64];
+          snprintf(status, sizeof(status), "S:%d%% W:%d%% (%d/%d)", session, weekly, idx + 1, count);
           nx.set_component_text("t1", status);
 
           char reset_buf[64];
-          snprintf(reset_buf, sizeof(reset_buf), "Resets %s", window_reset("session").c_str());
+          snprintf(reset_buf, sizeof(reset_buf), "Resets %s", window_reset(acct_json, "session").c_str());
           nx.set_component_text("t2", reset_buf);
-          snprintf(reset_buf, sizeof(reset_buf), "Resets %s", window_reset("weekly").c_str());
+          snprintf(reset_buf, sizeof(reset_buf), "Resets %s", window_reset(acct_json, "weekly").c_str());
           nx.set_component_text("t3", reset_buf);
 
           char wifi_buf[32];
@@ -126,3 +167,19 @@ script:
           unsigned long ago = (millis() - id(last_poll_at_ms)) / 1000;
           snprintf(time_buf, sizeof(time_buf), "Updated %lu s ago", ago);
           nx.set_component_text("t5", time_buf);
+
+  - id: cycle_account_prev
+    then:
+      - lambda: |-
+          int count = id(account_count) > 0 ? id(account_count) : 1;
+          id(account_index) = (id(account_index) - 1 + count) % count;
+      - script.execute: update_nextion_from_usage
+      - lambda: 'id(nextion_display).send_command("page overview");'
+
+  - id: cycle_account_next
+    then:
+      - lambda: |-
+          int count = id(account_count) > 0 ? id(account_count) : 1;
+          id(account_index) = (id(account_index) + 1) % count;
+      - script.execute: update_nextion_from_usage
+      - lambda: 'id(nextion_display).send_command("page overview");'

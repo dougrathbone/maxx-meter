@@ -5,7 +5,7 @@ import { dataRoot, readJsonFile, writeJsonFile } from "./storage.js";
 
 const OPTIONS_PATH = join(dataRoot(), "options.json");
 
-const DEFAULTS: GlobalSettings = GlobalSettingsSchema.parse({});
+const DEFAULTS: GlobalSettings = GlobalSettingsSchema.parse({ mqtt: {}, ha: {} });
 
 export async function loadSettings(): Promise<GlobalSettings> {
   const fromFile = await readJsonFile<Partial<GlobalSettings>>(OPTIONS_PATH);

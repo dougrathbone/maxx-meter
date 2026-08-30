@@ -45,4 +45,4 @@ map:
   - share:rw
 args:
   GITHUB_REPOSITORY: dougrathbone/maxx-meter
-  GITHUB_REF: main
+  GITHUB_REF: v0.1.0

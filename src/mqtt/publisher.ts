@@ -7,17 +7,26 @@ export class MqttPublisher {
 
   connect(settings: GlobalSettings): void {
     if (this.client) return;
+    this.openClient(settings);
+  }
+
+  reconnect(settings: GlobalSettings): void {
+    this.disconnect();
+    this.openClient(settings);
+  }
+
+  disconnect(): void {
+    this.client?.end(true);
+    this.client = null;
+  }
+
+  private openClient(settings: GlobalSettings): void {
     const url = `mqtt://${settings.mqtt.host}:${settings.mqtt.port}`;
     this.client = mqtt.connect(url, {
       username: settings.mqtt.username || undefined,
       password: settings.mqtt.password || undefined,
       reconnectPeriod: 5000,
     });
-  }
-
-  disconnect(): void {
-    this.client?.end(true);
-    this.client = null;
   }
 
   publishSnapshots(settings: GlobalSettings, snapshots: UsageSnapshot[]): void {
