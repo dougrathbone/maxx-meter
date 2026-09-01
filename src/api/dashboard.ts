@@ -1,7 +1,10 @@
+import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import Fastify from "fastify";
+import type { FastifyReply, FastifyRequest } from "fastify";
 import fastifyStatic from "@fastify/static";
+import { ingressBasePath, withIngressBase } from "./ingress.js";
 import {
   createAccount,
   deleteAccount,
@@ -31,16 +34,30 @@ import { resolveTargetUserId, resolveUserFromRequest } from "../users/context.js
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 
+const DASHBOARD_MISSING_HTML = `<!doctype html>
+<html lang="en"><head><meta charset="utf-8" /><title>MaxxMeter</title></head>
+<body><h1>MaxxMeter</h1>
+<p>The dashboard bundle is missing. Rebuild the add-on (<code>npm run build</code>) and restart.</p>
+</body></html>`;
+
+// Supervisor lives on 172.30.32.0/23; ingress requests always arrive from that subnet.
+const SUPERVISOR_SUBNET = /^(?:::ffff:)?172\.30\.3[23]\.\d{1,3}$/;
+
+function isTrustedRemote(remote: string): boolean {
+  return (
+    remote === "127.0.0.1" ||
+    remote === "::1" ||
+    remote === "::ffff:127.0.0.1" ||
+    SUPERVISOR_SUBNET.test(remote)
+  );
+}
+
 export async function createDashboardServer(poller: UsagePoller, mqtt?: MqttPublisher) {
   const app = Fastify({ logger: false });
 
   app.addHook("onRequest", async (req, reply) => {
-    const remote = req.socket.remoteAddress ?? "";
     const trusted =
-      remote === "172.30.32.2" ||
-      remote === "127.0.0.1" ||
-      remote === "::1" ||
-      remote === "::ffff:127.0.0.1" ||
+      isTrustedRemote(req.socket.remoteAddress ?? "") ||
       process.env.MAXXMETER_TRUST_ALL_INGRESS === "true";
     if (!trusted && process.env.NODE_ENV === "production") {
       return reply.code(403).send({ error: "ingress only" });
@@ -366,23 +383,50 @@ export async function createDashboardServer(poller: UsagePoller, mqtt?: MqttPubl
         return reply.code(400).send({ error: "Use /api/auth/claude/start?accountId=" });
       }
       return reply.redirect(
-        `/accounts?oauth=manual&provider=${encodeURIComponent(provider)}`,
+        `${ingressBasePath(req)}/accounts?oauth=manual&provider=${encodeURIComponent(provider)}`,
       );
     },
   );
 
   const dashboardDist = join(__dirname, "../../dashboard/dist");
+  const indexHtml = await readIndexHtml(dashboardDist);
+
+  const sendIndex = (req: FastifyRequest, reply: FastifyReply) =>
+    reply
+      .type("text/html; charset=utf-8")
+      .send(withIngressBase(indexHtml, ingressBasePath(req)));
+
+  // Intercept before @fastify/static so the shell always carries a <base href> pointing at
+  // the ingress prefix; without it the browser asks Home Assistant for ./assets and /api.
+  app.addHook("onRequest", async (req, reply) => {
+    if (req.method !== "GET" && req.method !== "HEAD") return;
+    const path = req.url.split("?")[0];
+    if (path === "/" || path === "/index.html") {
+      return sendIndex(req, reply);
+    }
+  });
+
   await app.register(fastifyStatic, {
     root: dashboardDist,
     prefix: "/",
+    index: false,
   });
 
   app.setNotFoundHandler((req, reply) => {
     if (req.url.startsWith("/api/")) {
       return reply.code(404).send({ error: "not found" });
     }
-    return reply.sendFile("index.html");
+    return sendIndex(req, reply);
   });
 
   return app;
+}
+
+async function readIndexHtml(dashboardDist: string): Promise<string> {
+  try {
+    return await readFile(join(dashboardDist, "index.html"), "utf8");
+  } catch {
+    console.warn(`MaxxMeter: dashboard bundle not found at ${dashboardDist}`);
+    return DASHBOARD_MISSING_HTML;
+  }
 }

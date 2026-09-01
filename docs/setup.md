@@ -47,3 +47,11 @@ npm run dev
 ```
 
 Dashboard: `http://localhost:8099` — Panel API: `http://localhost:8765`
+
+## Ingress paths
+
+Home Assistant serves the add-on from `/api/hassio_ingress/<session>/` and strips that prefix
+before forwarding, passing it back in the `X-Ingress-Path` header. The add-on injects a
+matching `<base href>` into `index.html`, and the dashboard resolves every API call against
+`document.baseURI`, so nothing may use root-absolute URLs (`/assets/...`, `/api/...`) — those
+resolve against Home Assistant itself and return 404.
