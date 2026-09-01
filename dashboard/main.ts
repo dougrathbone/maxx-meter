@@ -54,8 +54,14 @@ document.querySelectorAll(".nav").forEach((btn) => {
   });
 });
 
+// Home Assistant serves the add-on under /api/hassio_ingress/<session>/, so requests must
+// be resolved against the document base rather than the site root.
+function apiUrl(path: string): string {
+  return new URL(path.replace(/^\/+/, ""), new URL(".", document.baseURI)).toString();
+}
+
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(path, {
+  const res = await fetch(apiUrl(path), {
     headers: { "Content-Type": "application/json" },
     ...init,
   });
