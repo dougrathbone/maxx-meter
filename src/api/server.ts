@@ -20,10 +20,12 @@ export function createPanelServer(poller: UsagePoller) {
       if (!panel || !panelAuthOk(panel, req.headers.authorization)) {
         return reply.code(401).send({ error: "unauthorized" });
       }
+      const lastSeenAt = new Date().toISOString();
+      await updatePanel(panel.id, { lastSeenAt });
       return {
         ok: true,
         panel: { id: panel.id, label: panel.label, deviceProfile: panel.deviceProfile },
-        lastSeenAt: new Date().toISOString(),
+        lastSeenAt,
       };
     },
   );

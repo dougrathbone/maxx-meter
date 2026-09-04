@@ -53,7 +53,7 @@ export async function createPanel(input: {
 
 export async function updatePanel(
   id: string,
-  patch: Partial<Pick<Panel, "label" | "accountIds" | "deviceProfile" | "lastSeenAt">>,
+  patch: Partial<Pick<Panel, "label" | "accountIds" | "deviceProfile" | "lastSeenAt" | "ownerUserId">>,
 ): Promise<Panel | null> {
   const existing = await getPanel(id);
   if (!existing) return null;
@@ -72,6 +72,25 @@ export async function regeneratePanelApiKey(id: string): Promise<Panel | null> {
 
 export async function deletePanel(id: string): Promise<void> {
   await deleteFile(join(PANELS_DIR(), `${id}.json`));
+}
+
+export const UNASSIGNED_PANEL_OWNER = "unassigned";
+const LEGACY_BOOTSTRAP_OWNERS = new Set(["default", UNASSIGNED_PANEL_OWNER]);
+
+export function isUnassignedPanelOwner(ownerUserId: string): boolean {
+  return LEGACY_BOOTSTRAP_OWNERS.has(ownerUserId);
+}
+
+export async function claimUnassignedPanels(userId: string): Promise<number> {
+  if (!userId || isUnassignedPanelOwner(userId)) return 0;
+  const panels = await listPanels();
+  let claimed = 0;
+  for (const panel of panels) {
+    if (!isUnassignedPanelOwner(panel.ownerUserId)) continue;
+    await updatePanel(panel.id, { ownerUserId: userId });
+    claimed += 1;
+  }
+  return claimed;
 }
 
 export function panelAuthOk(panel: Panel, authHeader?: string): boolean {

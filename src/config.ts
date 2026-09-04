@@ -3,24 +3,86 @@ import { join } from "node:path";
 import { GlobalSettings, GlobalSettingsSchema } from "./models.js";
 import { dataRoot, readJsonFile, writeJsonFile } from "./storage.js";
 
-const OPTIONS_PATH = join(dataRoot(), "options.json");
-
 const DEFAULTS: GlobalSettings = GlobalSettingsSchema.parse({ mqtt: {}, ha: {} });
 
+export function settingsFilePath(): string {
+  return process.env.MAXXMETER_SETTINGS_PATH ?? join(dataRoot(), "settings.json");
+}
+
+export function haOptionsFilePath(): string {
+  return process.env.OPTIONS_PATH ?? join(dataRoot(), "options.json");
+}
+
+export function isHaAddOnOptions(raw: Record<string, unknown>): boolean {
+  return (
+    "poll_interval_seconds" in raw ||
+    "mqtt_host" in raw ||
+    "mqtt_port" in raw ||
+    "ha_url" in raw ||
+    "ha_token" in raw ||
+    "bootstrap_office_panel" in raw
+  );
+}
+
+export function isLegacyAppSettings(raw: Record<string, unknown>): boolean {
+  if (isHaAddOnOptions(raw)) return false;
+  return (
+    typeof raw.pollIntervalSeconds === "number" ||
+    (typeof raw.mqtt === "object" && raw.mqtt !== null)
+  );
+}
+
 export async function loadSettings(): Promise<GlobalSettings> {
-  const fromFile = await readJsonFile<Partial<GlobalSettings>>(OPTIONS_PATH);
-  const fromEnv = settingsFromEnv();
+  let fromFile = await readJsonFile<Partial<GlobalSettings>>(settingsFilePath());
+  if (!fromFile) {
+    const legacy = await readJsonFile<Record<string, unknown>>(haOptionsFilePath());
+    if (legacy && isLegacyAppSettings(legacy)) {
+      fromFile = legacy as Partial<GlobalSettings>;
+      const migrated = mergeSettings(fromFile, {});
+      await writeJsonFile(settingsFilePath(), migrated);
+      fromFile = migrated;
+    }
+  }
+  return applySupervisorHaFallback(mergeSettings(fromFile ?? {}, settingsFromEnv()));
+}
+
+export async function saveSettings(settings: GlobalSettings): Promise<void> {
+  const toStore: GlobalSettings = {
+    ...settings,
+    ha: { ...settings.ha },
+  };
+  if (process.env.SUPERVISOR_TOKEN && toStore.ha.token === process.env.SUPERVISOR_TOKEN) {
+    toStore.ha.token = "";
+  }
+  await writeJsonFile(settingsFilePath(), toStore);
+}
+
+export function applySupervisorHaFallback(settings: GlobalSettings): GlobalSettings {
+  if (settings.ha.token) return settings;
+  const token = process.env.SUPERVISOR_TOKEN;
+  if (!token) return settings;
+  return {
+    ...settings,
+    ha: {
+      url: settings.ha.url || "http://supervisor/core",
+      token,
+    },
+  };
+}
+
+function mergeSettings(
+  fromFile: Partial<GlobalSettings>,
+  fromEnv: Record<string, unknown>,
+): GlobalSettings {
+  const envMqtt = (fromEnv.mqtt as object) ?? {};
+  const envHa = (fromEnv.ha as object) ?? {};
   return GlobalSettingsSchema.parse({
     ...DEFAULTS,
     ...fromFile,
     ...fromEnv,
-    mqtt: { ...DEFAULTS.mqtt, ...fromFile?.mqtt, ...((fromEnv.mqtt as object) ?? {}) },
-    ha: { ...DEFAULTS.ha, ...fromFile?.ha, ...((fromEnv.ha as object) ?? {}) },
+    mqtt: { ...DEFAULTS.mqtt, ...fromFile.mqtt, ...envMqtt },
+    ha: { ...DEFAULTS.ha, ...fromFile.ha, ...envHa },
   });
-}
-
-export async function saveSettings(settings: GlobalSettings): Promise<void> {
-  await writeJsonFile(OPTIONS_PATH, settings);
 }
 
 function settingsFromEnv(): Record<string, unknown> {
@@ -38,13 +100,16 @@ function settingsFromEnv(): Record<string, unknown> {
   if (process.env.HA_URL) ha.url = process.env.HA_URL;
   if (process.env.HA_TOKEN) ha.token = process.env.HA_TOKEN;
 
-  return {
-    pollIntervalSeconds: envInt("POLL_INTERVAL_SECONDS"),
-    warnPct: envInt("WARN_PCT"),
-    criticalPct: envInt("CRITICAL_PCT"),
-    ...(Object.keys(mqtt).length ? { mqtt } : {}),
-    ...(Object.keys(ha).length ? { ha } : {}),
-  };
+  const fromEnv: Record<string, unknown> = {};
+  const poll = envInt("POLL_INTERVAL_SECONDS");
+  if (poll !== undefined) fromEnv.pollIntervalSeconds = poll;
+  const warn = envInt("WARN_PCT");
+  if (warn !== undefined) fromEnv.warnPct = warn;
+  const critical = envInt("CRITICAL_PCT");
+  if (critical !== undefined) fromEnv.criticalPct = critical;
+  if (Object.keys(mqtt).length) fromEnv.mqtt = mqtt;
+  if (Object.keys(ha).length) fromEnv.ha = ha;
+  return fromEnv;
 }
 
 function envInt(key: string): number | undefined {
@@ -55,7 +120,7 @@ function envInt(key: string): number | undefined {
 }
 
 export async function loadHaOptionsFile(): Promise<Record<string, unknown>> {
-  const path = process.env.OPTIONS_PATH ?? "/data/options.json";
+  const path = haOptionsFilePath();
   try {
     const raw = await readFile(path, "utf8");
     return JSON.parse(raw) as Record<string, unknown>;

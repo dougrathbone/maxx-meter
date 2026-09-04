@@ -23,6 +23,7 @@ import { GlobalSettingsSchema, ProviderIdSchema } from "../models.js";
 import type { UsagePoller } from "../poller.js";
 import type { MqttPublisher } from "../mqtt/publisher.js";
 import {
+  claimUnassignedPanels,
   createPanel,
   deletePanel,
   getPanel,
@@ -71,6 +72,7 @@ export async function createDashboardServer(poller: UsagePoller, mqtt?: MqttPubl
 
   app.get("/api/dashboard/me", async (req) => {
     const user = resolveUserFromRequest(req);
+    await claimUnassignedPanels(user.userId);
     return { userId: user.userId, userName: user.userName, isAdmin: user.isAdmin };
   });
 

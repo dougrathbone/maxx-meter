@@ -1,8 +1,8 @@
 FROM node:20-alpine AS build
 WORKDIR /app
-COPY package.json ./
-COPY dashboard/package.json ./dashboard/
-RUN npm install && npm install --prefix dashboard
+COPY package.json package-lock.json ./
+COPY dashboard/package.json dashboard/package-lock.json ./dashboard/
+RUN npm ci && npm ci --prefix dashboard
 COPY . .
 RUN npm run build
 
