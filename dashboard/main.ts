@@ -138,8 +138,15 @@ function escapeHtml(value: string): string {
     .replaceAll("'", "&#39;");
 }
 
-function bar(label: string, pct: number, warn: number, critical: number): string {
-  return `<div><div class="row"><strong>${escapeHtml(label)}</strong><span class="muted">${pct.toFixed(0)}%</span></div>
+function formatReset(resetsAt: string | null): string {
+  if (!resetsAt) return "";
+  const d = new Date(resetsAt);
+  if (Number.isNaN(d.getTime())) return "";
+  return ` · resets ${d.toLocaleString()}`;
+}
+
+function bar(label: string, pct: number, warn: number, critical: number, resetsAt: string | null): string {
+  return `<div><div class="row"><strong>${escapeHtml(label)}</strong><span class="muted">${pct.toFixed(0)}%${escapeHtml(formatReset(resetsAt))}</span></div>
     <div class="bar"><span style="width:${pct}%;background:${barColor(pct, warn, critical)}"></span></div></div>`;
 }
 
@@ -154,8 +161,8 @@ async function renderOverview(): Promise<string> {
       const weekly = s.windows.find((w) => w.id === "weekly");
       return `<div class="card">
         <div class="row"><strong>${escapeHtml(s.label)}</strong><span class="muted">${escapeHtml(s.provider)}</span><span class="muted">${escapeHtml(s.status)}</span></div>
-        ${session ? bar("Session", session.usedPct, s.thresholds.warnPct, s.thresholds.criticalPct) : ""}
-        ${weekly ? bar("Weekly", weekly.usedPct, s.thresholds.warnPct, s.thresholds.criticalPct) : ""}
+        ${session ? bar("Session", session.usedPct, s.thresholds.warnPct, s.thresholds.criticalPct, session.resetsAt) : ""}
+        ${weekly ? bar("Weekly", weekly.usedPct, s.thresholds.warnPct, s.thresholds.criticalPct, weekly.resetsAt) : ""}
         ${s.errorMessage ? `<p class="muted">${escapeHtml(s.errorMessage)}</p>` : ""}
       </div>`;
     })

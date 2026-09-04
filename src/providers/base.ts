@@ -71,7 +71,20 @@ export function parseUtilization(value: unknown): number | null {
 }
 
 export function parseResetAt(value: unknown): string | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return epochToIso(value);
+  }
   if (typeof value !== "string" || !value) return null;
+  if (/^\d+$/.test(value)) {
+    return epochToIso(Number(value));
+  }
   const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+
+/** Cursor billing-cycle fields are epoch milliseconds (or seconds) as strings. */
+function epochToIso(n: number): string | null {
+  const ms = n > 1e12 ? n : n * 1000;
+  const d = new Date(ms);
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
