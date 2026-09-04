@@ -108,7 +108,7 @@ function renderUserSwitcher(): void {
   const options = adminUsers
     .map(
       (u) =>
-        `<option value="${u.userId}"${u.userId === getSelectedUserId() ? " selected" : ""}>${u.userName}</option>`,
+        `<option value="${escapeHtml(u.userId)}"${u.userId === getSelectedUserId() ? " selected" : ""}>${escapeHtml(u.userName)}</option>`,
     )
     .join("");
 
@@ -127,8 +127,17 @@ function barColor(pct: number, warn: number, critical: number): string {
   return "var(--green)";
 }
 
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
 function bar(label: string, pct: number, warn: number, critical: number): string {
-  return `<div><div class="row"><strong>${label}</strong><span class="muted">${pct.toFixed(0)}%</span></div>
+  return `<div><div class="row"><strong>${escapeHtml(label)}</strong><span class="muted">${pct.toFixed(0)}%</span></div>
     <div class="bar"><span style="width:${pct}%;background:${barColor(pct, warn, critical)}"></span></div></div>`;
 }
 
@@ -142,10 +151,10 @@ async function renderOverview(): Promise<string> {
       const session = s.windows.find((w) => w.id === "session");
       const weekly = s.windows.find((w) => w.id === "weekly");
       return `<div class="card">
-        <div class="row"><strong>${s.label}</strong><span class="muted">${s.provider}</span><span class="muted">${s.status}</span></div>
+        <div class="row"><strong>${escapeHtml(s.label)}</strong><span class="muted">${escapeHtml(s.provider)}</span><span class="muted">${escapeHtml(s.status)}</span></div>
         ${session ? bar("Session", session.usedPct, s.thresholds.warnPct, s.thresholds.criticalPct) : ""}
         ${weekly ? bar("Weekly", weekly.usedPct, s.thresholds.warnPct, s.thresholds.criticalPct) : ""}
-        ${s.errorMessage ? `<p class="muted">${s.errorMessage}</p>` : ""}
+        ${s.errorMessage ? `<p class="muted">${escapeHtml(s.errorMessage)}</p>` : ""}
       </div>`;
     })
     .join("");
@@ -155,17 +164,17 @@ async function renderAccounts(): Promise<string> {
   const accounts = await api<Account[]>(`/api/dashboard/accounts${userQuery()}`);
   const list = accounts
     .map(
-      (a) => `<div class="card" data-account="${a.id}" data-provider="${a.provider}">
-      <div class="row"><strong>${a.label}</strong><span class="muted">${a.provider}</span>
+      (a) => `<div class="card" data-account="${escapeHtml(a.id)}" data-provider="${escapeHtml(a.provider)}">
+      <div class="row"><strong>${escapeHtml(a.label)}</strong><span class="muted">${escapeHtml(a.provider)}</span>
       <span class="muted">${a.connected ? "connected" : "disconnected"}</span></div>
       <div class="row" style="margin-top:0.5rem">
-        ${a.provider === "claude" ? `<button class="primary" data-oauth="${a.id}">OAuth Connect</button>` : ""}
-        <input id="token-${a.id}" placeholder="${a.provider === "cursor" ? "WorkosCursorSessionToken" : a.provider === "kimi" ? "sk-kimi-..." : "OAuth token or session key"}" style="flex:1;min-width:200px" />
-        <button class="primary" data-connect="${a.id}">Paste token</button>
-        <button class="danger" data-disconnect="${a.id}">Disconnect</button>
-        <button class="danger" data-delete="${a.id}">Delete</button>
+        ${a.provider === "claude" ? `<button class="primary" data-oauth="${escapeHtml(a.id)}">OAuth Connect</button>` : ""}
+        <input id="token-${escapeHtml(a.id)}" placeholder="${a.provider === "cursor" ? "WorkosCursorSessionToken" : a.provider === "kimi" ? "sk-kimi-..." : "OAuth token or session key"}" style="flex:1;min-width:200px" />
+        <button class="primary" data-connect="${escapeHtml(a.id)}">Paste token</button>
+        <button class="danger" data-disconnect="${escapeHtml(a.id)}">Disconnect</button>
+        <button class="danger" data-delete="${escapeHtml(a.id)}">Delete</button>
       </div>
-      <div id="oauth-box-${a.id}" class="muted" style="display:none;margin-top:0.5rem"></div>
+      <div id="oauth-box-${escapeHtml(a.id)}" class="muted" style="display:none;margin-top:0.5rem"></div>
     </div>`,
     )
     .join("");
@@ -197,29 +206,29 @@ async function renderPanels(): Promise<string> {
     accounts
       .map(
         (a) =>
-          `<label class="checkbox-row"><input type="checkbox" data-panel-account="${panel.id}" value="${a.id}"${panel.accountIds.includes(a.id) ? " checked" : ""} /> ${a.label} <span class="muted">(${a.provider})</span></label>`,
+          `<label class="checkbox-row"><input type="checkbox" data-panel-account="${escapeHtml(panel.id)}" value="${escapeHtml(a.id)}"${panel.accountIds.includes(a.id) ? " checked" : ""} /> ${escapeHtml(a.label)} <span class="muted">(${escapeHtml(a.provider)})</span></label>`,
       )
       .join("");
 
   const list = panels
     .map(
-      (p) => `<div class="card" data-panel="${p.id}">
-      <div class="row"><strong>${p.label}</strong><span class="muted">${p.deviceProfile}</span></div>
-      <p class="muted">Panel ID: <code>${p.id}</code></p>
-      <p class="muted">API key: <code>${p.apiKey}</code></p>
-      <p class="muted">Last seen: ${p.lastSeenAt ?? "never"}</p>
+      (p) => `<div class="card" data-panel="${escapeHtml(p.id)}">
+      <div class="row"><strong>${escapeHtml(p.label)}</strong><span class="muted">${escapeHtml(p.deviceProfile)}</span></div>
+      <p class="muted">Panel ID: <code>${escapeHtml(p.id)}</code></p>
+      <p class="muted">API key: <code>${escapeHtml(p.apiKey)}</code></p>
+      <p class="muted">Last seen: ${escapeHtml(p.lastSeenAt ?? "never")}</p>
       <div class="form-section">
         <h4>Displayed accounts</h4>
         <p class="muted">Leave all unchecked to show every connected account on this panel.</p>
         <div class="checkbox-list">${accountOptions(p) || '<p class="muted">No accounts yet.</p>'}</div>
-        <button class="primary" data-save-panel-accounts="${p.id}">Save accounts</button>
+        <button class="primary" data-save-panel-accounts="${escapeHtml(p.id)}">Save accounts</button>
       </div>
       <pre class="muted"><code>collector_host: homeassistant.local
-panel_id: ${p.id}
-panel_api_key: ${p.apiKey}</code></pre>
+panel_id: ${escapeHtml(p.id)}
+panel_api_key: ${escapeHtml(p.apiKey)}</code></pre>
       <div class="row">
-        <button class="danger" data-delete-panel="${p.id}">Delete</button>
-        <button class="primary" data-regen="${p.id}">Regenerate key</button>
+        <button class="danger" data-delete-panel="${escapeHtml(p.id)}">Delete</button>
+        <button class="primary" data-regen="${escapeHtml(p.id)}">Regenerate key</button>
       </div>
     </div>`,
     )
@@ -264,18 +273,18 @@ async function renderSettings(): Promise<string> {
         <div class="form-section">
           <h4>MQTT</h4>
           <div class="form-grid">
-            <label>Host <input type="text" id="mqtt-host" value="${s.mqtt.host}" /></label>
+            <label>Host <input type="text" id="mqtt-host" value="${escapeHtml(s.mqtt.host)}" /></label>
             <label>Port <input type="number" id="mqtt-port" value="${s.mqtt.port}" /></label>
-            <label>Username <input type="text" id="mqtt-username" value="${s.mqtt.username}" /></label>
-            <label>Password <input type="password" id="mqtt-password" placeholder="${pwdPlaceholder}" autocomplete="new-password" /></label>
-            <label>Topic prefix <input type="text" id="mqtt-topicPrefix" value="${s.mqtt.topicPrefix}" /></label>
+            <label>Username <input type="text" id="mqtt-username" value="${escapeHtml(s.mqtt.username)}" /></label>
+            <label>Password <input type="password" id="mqtt-password" placeholder="${escapeHtml(pwdPlaceholder)}" autocomplete="new-password" /></label>
+            <label>Topic prefix <input type="text" id="mqtt-topicPrefix" value="${escapeHtml(s.mqtt.topicPrefix)}" /></label>
           </div>
         </div>
         <div class="form-section">
           <h4>Home Assistant</h4>
           <div class="form-grid">
-            <label>URL <input type="text" id="ha-url" value="${s.ha.url}" /></label>
-            <label>Token <input type="password" id="ha-token" placeholder="${tokenPlaceholder}" autocomplete="new-password" /></label>
+            <label>URL <input type="text" id="ha-url" value="${escapeHtml(s.ha.url)}" /></label>
+            <label>Token <input type="password" id="ha-token" placeholder="${escapeHtml(tokenPlaceholder)}" autocomplete="new-password" /></label>
           </div>
         </div>
         <div class="form-actions">
@@ -303,7 +312,7 @@ async function render(): Promise<void> {
       bindSettingsActions();
     }
   } catch (err) {
-    app.innerHTML = `<div class="card"><p>Failed to load: ${err instanceof Error ? err.message : err}</p></div>`;
+    app.innerHTML = `<div class="card"><p>Failed to load: ${escapeHtml(err instanceof Error ? err.message : String(err))}</p></div>`;
   }
 }
 
@@ -328,7 +337,7 @@ function bindAccountActions(): void {
       window.open(start.authorizationUrl, "_blank");
       const box = document.getElementById(`oauth-box-${id}`)!;
       box.style.display = "block";
-      box.innerHTML = `<p>${start.instructions}</p>
+      box.innerHTML = `<p>${escapeHtml(start.instructions)}</p>
         <div class="row">
           <input id="oauth-code-${id}" placeholder="Authorization code" style="flex:1" />
           <button class="primary" data-oauth-submit="${id}" data-state="${start.stateId}">Submit code</button>

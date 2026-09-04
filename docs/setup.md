@@ -32,6 +32,14 @@ Sensors appear under topics:
 ```
 maxxmeter/users/{user_slug}/{account_id}/session_usage/state
 maxxmeter/users/{user_slug}/{account_id}/weekly_usage/state
+maxxmeter/users/{user_slug}/{account_id}/auth_ok/state
+```
+
+Home Assistant MQTT discovery also publishes:
+
+```
+homeassistant/sensor/maxxmeter/{user_slug}_{account_id}_session_usage/config
+homeassistant/binary_sensor/maxxmeter/{user_slug}_{account_id}_auth_ok/config
 ```
 
 Optional Lovelace card: [ha-config/packages/maxxmeter_lovelace.yaml](../ha-config/packages/maxxmeter_lovelace.yaml)

@@ -3,7 +3,7 @@
 ## Multi-user (Home Assistant)
 
 - Each HA user sees only **their** accounts and panels in the ingress dashboard.
-- MQTT entities are published under `maxxmeter/<ownerUserId>/...` (configurable prefix).
+- MQTT entities are published under `maxxmeter/users/<ownerUserSlug>/<accountId>/...` (configurable prefix).
 - HA admins get a **user switcher** in the dashboard header to view and manage any user's accounts and panels.
 
 Dev fallback (no ingress headers):

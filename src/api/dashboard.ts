@@ -26,11 +26,16 @@ import {
   createPanel,
   deletePanel,
   getPanel,
+  listPanels,
   listPanelsForUser,
   regeneratePanelApiKey,
   updatePanel,
 } from "../panels/registry.js";
-import { resolveTargetUserId, resolveUserFromRequest } from "../users/context.js";
+import {
+  mergeDashboardUsers,
+  resolveTargetUserId,
+  resolveUserFromRequest,
+} from "../users/context.js";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 
@@ -72,16 +77,8 @@ export async function createDashboardServer(poller: UsagePoller, mqtt?: MqttPubl
   app.get("/api/dashboard/users", async (req, reply) => {
     const user = resolveUserFromRequest(req);
     if (!user.isAdmin) return reply.code(403).send({ error: "admin only" });
-    const accounts = await listAccounts();
-    const byUser = new Map<string, string>();
-    for (const a of accounts) {
-      if (!byUser.has(a.ownerUserId)) {
-        byUser.set(a.ownerUserId, a.ownerUserName ?? a.ownerUserId);
-      }
-    }
-    return [...byUser.entries()]
-      .map(([userId, userName]) => ({ userId, userName }))
-      .sort((a, b) => a.userName.localeCompare(b.userName));
+    const [accounts, panels] = await Promise.all([listAccounts(), listPanels()]);
+    return mergeDashboardUsers(accounts, panels);
   });
 
   app.get<{ Querystring: { userId?: string } }>("/api/dashboard/usage", async (req) => {
