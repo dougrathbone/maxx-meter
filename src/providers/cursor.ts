@@ -21,14 +21,6 @@ export const cursorProvider: Provider = {
   ): Promise<UsageSnapshot> {
     try {
       const cookie = formatCursorCookie(credential.accessToken);
-      const summaryRes = await fetch("https://cursor.com/api/usage-summary", {
-        headers: { Cookie: cookie, "User-Agent": "MaxxMeter/0.1" },
-      });
-
-      if (!summaryRes.ok) {
-        throw new ProviderHttpError(`Cursor summary ${summaryRes.status}`, summaryRes.status);
-      }
-
       const periodRes = await fetch("https://cursor.com/api/dashboard/get-current-period-usage", {
         method: "POST",
         headers: {

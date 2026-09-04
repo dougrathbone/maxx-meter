@@ -61,10 +61,12 @@ function apiUrl(path: string): string {
 }
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(apiUrl(path), {
-    headers: { "Content-Type": "application/json" },
-    ...init,
-  });
+  const method = (init?.method ?? "GET").toUpperCase();
+  const headers = new Headers(init?.headers);
+  if (method !== "GET" && method !== "HEAD" && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+  const res = await fetch(apiUrl(path), { ...init, headers });
   if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
   return res.json() as Promise<T>;
 }
