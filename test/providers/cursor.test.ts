@@ -32,16 +32,14 @@ describe("cursorProvider", () => {
 
     vi.stubGlobal(
       "fetch",
-      vi.fn()
-        .mockResolvedValueOnce({ ok: true, json: async () => ({}) })
-        .mockResolvedValueOnce({ ok: true, json: async () => period }),
+      vi.fn().mockResolvedValueOnce({ ok: true, json: async () => period }),
     );
 
     const snap = await cursorProvider.fetchUsage(account, {
       accountId: account.id,
       ownerUserId: account.ownerUserId,
       provider: "cursor",
-      authMethod: "cookie",
+      authMethod: "session",
       accessToken: "session-token",
       connectedAt: new Date().toISOString(),
     }, settings);
@@ -50,6 +48,50 @@ describe("cursorProvider", () => {
     expect(snap.windows).toHaveLength(2);
     expect(snap.windows[0]?.id).toBe("session");
     expect(snap.windows[0]?.usedPct).toBe(42.5);
+    expect(snap.windows[0]?.resetsAt).toBe("2026-08-05T19:20:59.000Z");
     expect(snap.windows[1]?.usedPct).toBe(67);
+    expect(snap.windows[1]?.resetsAt).toBe("2026-08-05T19:20:59.000Z");
+  });
+
+  it("falls back to top-level percent fields when planUsage is absent", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ autoPercentUsed: 10, apiPercentUsed: 20 }),
+      }),
+    );
+    const snap = await cursorProvider.fetchUsage(
+      account,
+      {
+        accountId: account.id,
+        ownerUserId: account.ownerUserId,
+        provider: "cursor",
+        authMethod: "session",
+        accessToken: "session-token",
+        connectedAt: new Date().toISOString(),
+      },
+      settings,
+    );
+    expect(snap.windows[0]?.usedPct).toBe(10);
+    expect(snap.windows[0]?.resetsAt).toBeNull();
+    expect(snap.windows[1]?.usedPct).toBe(20);
+  });
+
+  it("maps period 401 to auth_expired", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce({ ok: false, status: 401 }));
+    const snap = await cursorProvider.fetchUsage(
+      account,
+      {
+        accountId: account.id,
+        ownerUserId: account.ownerUserId,
+        provider: "cursor",
+        authMethod: "session",
+        accessToken: "session-token",
+        connectedAt: new Date().toISOString(),
+      },
+      settings,
+    );
+    expect(snap.status).toBe("auth_expired");
   });
 });

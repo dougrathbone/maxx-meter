@@ -42,6 +42,7 @@ const ADMIN_USER_KEY = "maxxmeter-admin-user";
 
 const app = document.getElementById("app")!;
 let page = "overview";
+let renderSeq = 0;
 let me: Me | null = null;
 let adminUsers: DashboardUser[] = [];
 
@@ -61,10 +62,12 @@ function apiUrl(path: string): string {
 }
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(apiUrl(path), {
-    headers: { "Content-Type": "application/json" },
-    ...init,
-  });
+  const method = (init?.method ?? "GET").toUpperCase();
+  const headers = new Headers(init?.headers);
+  if (method !== "GET" && method !== "HEAD" && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+  const res = await fetch(apiUrl(path), { ...init, headers });
   if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
   return res.json() as Promise<T>;
 }
@@ -136,8 +139,15 @@ function escapeHtml(value: string): string {
     .replaceAll("'", "&#39;");
 }
 
-function bar(label: string, pct: number, warn: number, critical: number): string {
-  return `<div><div class="row"><strong>${escapeHtml(label)}</strong><span class="muted">${pct.toFixed(0)}%</span></div>
+function formatReset(resetsAt: string | null): string {
+  if (!resetsAt) return "";
+  const d = new Date(resetsAt);
+  if (Number.isNaN(d.getTime())) return "";
+  return ` · resets ${d.toLocaleString()}`;
+}
+
+function bar(label: string, pct: number, warn: number, critical: number, resetsAt: string | null): string {
+  return `<div><div class="row"><strong>${escapeHtml(label)}</strong><span class="muted">${pct.toFixed(0)}%${escapeHtml(formatReset(resetsAt))}</span></div>
     <div class="bar"><span style="width:${pct}%;background:${barColor(pct, warn, critical)}"></span></div></div>`;
 }
 
@@ -152,8 +162,8 @@ async function renderOverview(): Promise<string> {
       const weekly = s.windows.find((w) => w.id === "weekly");
       return `<div class="card">
         <div class="row"><strong>${escapeHtml(s.label)}</strong><span class="muted">${escapeHtml(s.provider)}</span><span class="muted">${escapeHtml(s.status)}</span></div>
-        ${session ? bar("Session", session.usedPct, s.thresholds.warnPct, s.thresholds.criticalPct) : ""}
-        ${weekly ? bar("Weekly", weekly.usedPct, s.thresholds.warnPct, s.thresholds.criticalPct) : ""}
+        ${session ? bar("Session", session.usedPct, s.thresholds.warnPct, s.thresholds.criticalPct, session.resetsAt) : ""}
+        ${weekly ? bar("Weekly", weekly.usedPct, s.thresholds.warnPct, s.thresholds.criticalPct, weekly.resetsAt) : ""}
         ${s.errorMessage ? `<p class="muted">${escapeHtml(s.errorMessage)}</p>` : ""}
       </div>`;
     })
@@ -299,19 +309,21 @@ async function renderSettings(): Promise<string> {
 }
 
 async function render(): Promise<void> {
+  const seq = ++renderSeq;
+  const current = page;
   try {
-    if (page === "overview") app.innerHTML = await renderOverview();
-    else if (page === "accounts") {
-      app.innerHTML = await renderAccounts();
-      bindAccountActions();
-    } else if (page === "panels") {
-      app.innerHTML = await renderPanels();
-      bindPanelActions();
-    } else {
-      app.innerHTML = await renderSettings();
-      bindSettingsActions();
-    }
+    let html: string;
+    if (current === "overview") html = await renderOverview();
+    else if (current === "accounts") html = await renderAccounts();
+    else if (current === "panels") html = await renderPanels();
+    else html = await renderSettings();
+    if (seq !== renderSeq) return;
+    app.innerHTML = html;
+    if (current === "accounts") bindAccountActions();
+    else if (current === "panels") bindPanelActions();
+    else if (current === "settings") bindSettingsActions();
   } catch (err) {
+    if (seq !== renderSeq) return;
     app.innerHTML = `<div class="card"><p>Failed to load: ${escapeHtml(err instanceof Error ? err.message : String(err))}</p></div>`;
   }
 }

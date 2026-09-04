@@ -17,4 +17,9 @@ describe("parseResetAt", () => {
   it("parses ISO dates", () => {
     expect(parseResetAt("2026-08-23T12:00:00Z")).toBe("2026-08-23T12:00:00.000Z");
   });
+
+  it("parses epoch milliseconds and seconds", () => {
+    expect(parseResetAt("1785957659000")).toBe("2026-08-05T19:20:59.000Z");
+    expect(parseResetAt(1785957659)).toBe("2026-08-05T19:20:59.000Z");
+  });
 });

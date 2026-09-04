@@ -3,13 +3,21 @@ import {
   ProviderHttpError,
   errorSnapshot,
   mapHttpError,
+  parseResetAt,
   parseUtilization,
   type Provider,
 } from "./base.js";
 
+interface CursorPlanUsage {
+  autoPercentUsed?: number;
+  apiPercentUsed?: number;
+}
+
 interface CursorPeriodUsage {
   autoPercentUsed?: number;
   apiPercentUsed?: number;
+  billingCycleEnd?: string | number;
+  planUsage?: CursorPlanUsage;
 }
 
 export const cursorProvider: Provider = {
@@ -21,14 +29,6 @@ export const cursorProvider: Provider = {
   ): Promise<UsageSnapshot> {
     try {
       const cookie = formatCursorCookie(credential.accessToken);
-      const summaryRes = await fetch("https://cursor.com/api/usage-summary", {
-        headers: { Cookie: cookie, "User-Agent": "MaxxMeter/0.1" },
-      });
-
-      if (!summaryRes.ok) {
-        throw new ProviderHttpError(`Cursor summary ${summaryRes.status}`, summaryRes.status);
-      }
-
       const periodRes = await fetch("https://cursor.com/api/dashboard/get-current-period-usage", {
         method: "POST",
         headers: {
@@ -46,15 +46,17 @@ export const cursorProvider: Provider = {
 
       const period = (await periodRes.json()) as CursorPeriodUsage;
       const windows = [];
+      const plan = period.planUsage;
+      const resetsAt = parseResetAt(period.billingCycleEnd);
 
-      const autoPct = parseUtilization(period.autoPercentUsed);
+      const autoPct = parseUtilization(plan?.autoPercentUsed ?? period.autoPercentUsed);
       if (autoPct !== null) {
-        windows.push({ id: "session" as const, usedPct: autoPct, resetsAt: null });
+        windows.push({ id: "session" as const, usedPct: autoPct, resetsAt });
       }
 
-      const apiPct = parseUtilization(period.apiPercentUsed);
+      const apiPct = parseUtilization(plan?.apiPercentUsed ?? period.apiPercentUsed);
       if (apiPct !== null) {
-        windows.push({ id: "weekly" as const, usedPct: apiPct, resetsAt: null });
+        windows.push({ id: "weekly" as const, usedPct: apiPct, resetsAt });
       }
 
       return {
