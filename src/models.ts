@@ -92,6 +92,7 @@ export const GlobalSettingsSchema = z.object({
     username: z.string().default(""),
     password: z.string().default(""),
     topicPrefix: z.string().default("maxxmeter"),
+    tls: z.boolean().default(false),
   }),
   ha: z.object({
     url: z.string().default("http://supervisor/core"),
