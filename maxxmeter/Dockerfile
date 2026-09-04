@@ -12,7 +12,7 @@ RUN git clone --depth 1 --branch "${GITHUB_REF}" "https://github.com/${GITHUB_RE
   && cp -a /tmp/src/. /app/ \
   && rm -rf /tmp/src
 
-RUN npm install && npm install --prefix dashboard && npm run build
+RUN npm ci && npm ci --prefix dashboard && npm run build
 
 ENV MAXXMETER_DATA_DIR=/data
 ENV NODE_ENV=production

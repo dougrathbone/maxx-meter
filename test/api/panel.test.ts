@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createPanelServer } from "../../src/api/server.js";
-import { createPanel } from "../../src/panels/registry.js";
+import { createPanel, getPanel } from "../../src/panels/registry.js";
 import type { UsageSnapshot } from "../../src/models.js";
 import { UsagePoller } from "../../src/poller.js";
 
@@ -102,6 +102,31 @@ describe("panel API", () => {
     expect(body.accounts).toHaveLength(1);
     expect(body.accounts[0]?.label).toBe("Claude Pro");
     expect(body.thresholds.warnPct).toBe(70);
+    await app.close();
+  });
+
+  it("records lastSeenAt on panel health", async () => {
+    const poller = new MockPoller([]);
+    const panel = await createPanel({
+      label: "Office",
+      deviceProfile: "nspanel-eu",
+      ownerUserId: "user1",
+      accountIds: [],
+    });
+    const app = createPanelServer(poller);
+    await app.ready();
+
+    const res = await app.inject({
+      method: "GET",
+      url: `/api/v1/panels/${panel.id}/health`,
+      headers: { authorization: `Bearer ${panel.apiKey}` },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as { lastSeenAt: string };
+    expect(body.lastSeenAt).toBeTruthy();
+
+    const stored = await getPanel(panel.id);
+    expect(stored?.lastSeenAt).toBe(body.lastSeenAt);
     await app.close();
   });
 

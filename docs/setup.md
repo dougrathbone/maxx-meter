@@ -7,6 +7,11 @@
 3. Install **MaxxMeter**, configure MQTT/HA token in add-on options
 4. Start the add-on and open **MaxxMeter** from the sidebar
 
+Add-on options (MQTT, poll interval, HA token) are applied on **startup** into
+`/data/settings.json`. The dashboard Settings tab writes that same file and does
+**not** overwrite Supervisor's `/data/options.json`. Leave MQTT password / HA token
+blank in add-on options to keep a value already saved in the dashboard.
+
 ## Connect accounts
 
 See [connect-accounts.md](./connect-accounts.md) for full steps.

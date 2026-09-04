@@ -1,28 +1,49 @@
-import { loadHaOptionsFile, loadSettings, saveSettings } from "./config.js";
+import {
+  isHaAddOnOptions,
+  loadHaOptionsFile,
+  loadSettings,
+  saveSettings,
+} from "./config.js";
 import type { GlobalSettings } from "./models.js";
 
-/** Map Home Assistant add-on options.json into app settings on startup. */
+/** Map Home Assistant add-on options.json into app settings on startup.
+ * Supervisor owns `/data/options.json`; MaxxMeter persists its own copy in settings.json.
+ */
 export async function syncSettingsFromHaOptions(): Promise<void> {
   const options = await loadHaOptionsFile();
   if (!options || Object.keys(options).length === 0) return;
+  if (!isHaAddOnOptions(options)) return;
 
   const current = await loadSettings();
-  const next: GlobalSettings = {
-    pollIntervalSeconds:
-      (options.poll_interval_seconds as number) ?? current.pollIntervalSeconds,
-    warnPct: (options.warn_pct as number) ?? current.warnPct,
-    criticalPct: (options.critical_pct as number) ?? current.criticalPct,
+  await saveSettings(overlayHaOptions(current, options));
+}
+
+export function overlayHaOptions(
+  current: GlobalSettings,
+  options: Record<string, unknown>,
+): GlobalSettings {
+  return {
+    pollIntervalSeconds: numberOr(options.poll_interval_seconds, current.pollIntervalSeconds),
+    warnPct: numberOr(options.warn_pct, current.warnPct),
+    criticalPct: numberOr(options.critical_pct, current.criticalPct),
     mqtt: {
-      host: (options.mqtt_host as string) ?? current.mqtt.host,
-      port: (options.mqtt_port as number) ?? current.mqtt.port,
-      username: (options.mqtt_username as string) ?? current.mqtt.username,
-      password: (options.mqtt_password as string) ?? current.mqtt.password,
-      topicPrefix: (options.mqtt_topic_prefix as string) ?? current.mqtt.topicPrefix,
+      host: nonEmptyString(options.mqtt_host) ?? current.mqtt.host,
+      port: numberOr(options.mqtt_port, current.mqtt.port),
+      username: nonEmptyString(options.mqtt_username) ?? current.mqtt.username,
+      password: nonEmptyString(options.mqtt_password) ?? current.mqtt.password,
+      topicPrefix: nonEmptyString(options.mqtt_topic_prefix) ?? current.mqtt.topicPrefix,
     },
     ha: {
-      url: (options.ha_url as string) ?? current.ha.url,
-      token: (options.ha_token as string) ?? current.ha.token,
+      url: nonEmptyString(options.ha_url) ?? current.ha.url,
+      token: nonEmptyString(options.ha_token) ?? current.ha.token,
     },
   };
-  await saveSettings(next);
+}
+
+function numberOr(value: unknown, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function nonEmptyString(value: unknown): string | undefined {
+  return typeof value === "string" && value.length > 0 ? value : undefined;
 }
