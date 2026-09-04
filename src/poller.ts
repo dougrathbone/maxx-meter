@@ -14,7 +14,7 @@ export function pollIntervalMs(pollIntervalSeconds: number): number {
 export class UsagePoller {
   private cache: UsageSnapshot[] = [];
   private timer: ReturnType<typeof setInterval> | null = null;
-  private running = false;
+  private tail: Promise<unknown> = Promise.resolve();
   private onPoll: ((snapshots: UsageSnapshot[]) => void | Promise<void>) | null = null;
 
   constructor(private getSettings: () => Promise<GlobalSettings>) {}
@@ -36,38 +36,42 @@ export class UsagePoller {
     return this.cache.filter((s) => set.has(s.accountId));
   }
 
+  /** Serialize polls so connecting an account never no-ops while another poll is in flight. */
   async pollOnce(): Promise<UsageSnapshot[]> {
-    if (this.running) return this.cache;
-    this.running = true;
-    try {
-      const settings = await this.getSettings();
-      const accounts = await listAccounts();
-      const results: UsageSnapshot[] = [];
+    const next = this.tail.then(() => this.collectSnapshots());
+    this.tail = next.then(
+      () => undefined,
+      () => undefined,
+    );
+    return next;
+  }
 
-      for (const account of accounts) {
-        let credential = await getCredential(account.id);
-        if (!credential) {
-          results.push(disconnectedSnapshot(account, settings));
-          continue;
-        }
-        credential = await resolveCredential(account, credential);
-        const provider = getProvider(account.provider);
-        let snap = await provider.fetchUsage(account, credential, settings);
-        if (snap.status === "auth_expired") {
-          const refreshed = await retryCredentialAfterAuthExpired(account, credential);
-          if (refreshed) {
-            snap = await provider.fetchUsage(account, refreshed, settings);
-          }
-        }
-        results.push(snap);
+  protected async collectSnapshots(): Promise<UsageSnapshot[]> {
+    const settings = await this.getSettings();
+    const accounts = await listAccounts();
+    const results: UsageSnapshot[] = [];
+
+    for (const account of accounts) {
+      let credential = await getCredential(account.id);
+      if (!credential) {
+        results.push(disconnectedSnapshot(account, settings));
+        continue;
       }
-
-      this.cache = results;
-      if (this.onPoll) await this.onPoll(results);
-      return results;
-    } finally {
-      this.running = false;
+      credential = await resolveCredential(account, credential);
+      const provider = getProvider(account.provider);
+      let snap = await provider.fetchUsage(account, credential, settings);
+      if (snap.status === "auth_expired") {
+        const refreshed = await retryCredentialAfterAuthExpired(account, credential);
+        if (refreshed) {
+          snap = await provider.fetchUsage(account, refreshed, settings);
+        }
+      }
+      results.push(snap);
     }
+
+    this.cache = results;
+    if (this.onPoll) await this.onPoll(results);
+    return results;
   }
 
   start(): void {

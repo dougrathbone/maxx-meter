@@ -28,12 +28,14 @@ beforeEach(async () => {
     "POLL_INTERVAL_SECONDS",
     "OPTIONS_PATH",
     "MAXXMETER_SETTINGS_PATH",
+    "SUPERVISOR_TOKEN",
   ]);
   process.env.MAXXMETER_DATA_DIR = dataDir;
   delete process.env.MQTT_HOST;
   delete process.env.POLL_INTERVAL_SECONDS;
   delete process.env.OPTIONS_PATH;
   delete process.env.MAXXMETER_SETTINGS_PATH;
+  delete process.env.SUPERVISOR_TOKEN;
 });
 
 afterEach(async () => {
@@ -139,5 +141,23 @@ describe("syncSettingsFromHaOptions", () => {
     const loaded = await loadSettings();
     expect(loaded.pollIntervalSeconds).toBe(120);
     expect(loaded.mqtt.host).toBe("broker.local");
+  });
+});
+
+describe("SUPERVISOR_TOKEN", () => {
+  it("fills an empty HA token at load time and does not persist it", async () => {
+    process.env.SUPERVISOR_TOKEN = "supervisor-secret";
+    await saveSettings({
+      ...base,
+      ha: { url: "http://supervisor/core", token: "" },
+    });
+    const loaded = await loadSettings();
+    expect(loaded.ha.token).toBe("supervisor-secret");
+
+    await saveSettings(loaded);
+    const onDisk = JSON.parse(await readFile(join(dataDir, "settings.json"), "utf8")) as {
+      ha: { token: string };
+    };
+    expect(onDisk.ha.token).toBe("");
   });
 });

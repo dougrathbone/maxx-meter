@@ -4,13 +4,17 @@
 
 1. In Home Assistant → **Settings** → **Add-ons** → **Add-on store** → **Repositories**
 2. Add: `https://github.com/dougrathbone/maxx-meter`
-3. Install **MaxxMeter**, configure MQTT/HA token in add-on options
+3. Install **MaxxMeter**, configure MQTT in add-on options (HA token is optional — the add-on uses Supervisor's token when blank)
 4. Start the add-on and open **MaxxMeter** from the sidebar
 
 Add-on options (MQTT, poll interval, HA token) are applied on **startup** into
 `/data/settings.json`. The dashboard Settings tab writes that same file and does
 **not** overwrite Supervisor's `/data/options.json`. Leave MQTT password / HA token
 blank in add-on options to keep a value already saved in the dashboard.
+
+On Home Assistant, leave **HA token** empty to use the add-on's `SUPERVISOR_TOKEN`
+for Core notifications. A panel created by **bootstrap_office_panel** is claimed
+by the first user who opens the MaxxMeter dashboard.
 
 ## Connect accounts
 

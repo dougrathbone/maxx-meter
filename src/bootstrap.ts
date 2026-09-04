@@ -1,5 +1,5 @@
 import { loadHaOptionsFile } from "./config.js";
-import { createPanel, listPanels } from "./panels/registry.js";
+import { createPanel, listPanels, UNASSIGNED_PANEL_OWNER } from "./panels/registry.js";
 
 /** Create default office panel when add-on option bootstrap_office_panel is enabled. */
 export async function bootstrapOfficePanelIfNeeded(): Promise<void> {
@@ -12,7 +12,7 @@ export async function bootstrapOfficePanelIfNeeded(): Promise<void> {
   const panel = await createPanel({
     label: "Office panel",
     deviceProfile: "nspanel-us-portrait",
-    ownerUserId: "default",
+    ownerUserId: UNASSIGNED_PANEL_OWNER,
     accountIds: [],
   });
 

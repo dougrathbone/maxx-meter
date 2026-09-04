@@ -188,4 +188,36 @@ describe("dashboard users", () => {
     expect(res.statusCode).toBe(403);
     await app.close();
   });
+
+  it("claims bootstrap panels owned by default/unassigned for the current user", async () => {
+    const panel = await createPanel({
+      label: "Office panel",
+      deviceProfile: "nspanel-us-portrait",
+      ownerUserId: "default",
+      accountIds: [],
+    });
+    const app = await buildApp();
+    await app.inject({
+      method: "GET",
+      url: "/api/dashboard/me",
+      headers: {
+        "x-remote-user-id": "doug",
+        "x-remote-user-name": "Doug",
+        "x-remote-user-is-admin": "true",
+      },
+    });
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/dashboard/panels",
+      headers: {
+        "x-remote-user-id": "doug",
+        "x-remote-user-name": "Doug",
+        "x-remote-user-is-admin": "true",
+      },
+    });
+    expect(res.statusCode).toBe(200);
+    const panels = res.json() as { id: string; ownerUserId?: string }[];
+    expect(panels.some((p) => p.id === panel.id)).toBe(true);
+    await app.close();
+  });
 });

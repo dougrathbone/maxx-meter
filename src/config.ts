@@ -43,11 +43,31 @@ export async function loadSettings(): Promise<GlobalSettings> {
       fromFile = migrated;
     }
   }
-  return mergeSettings(fromFile ?? {}, settingsFromEnv());
+  return applySupervisorHaFallback(mergeSettings(fromFile ?? {}, settingsFromEnv()));
 }
 
 export async function saveSettings(settings: GlobalSettings): Promise<void> {
-  await writeJsonFile(settingsFilePath(), settings);
+  const toStore: GlobalSettings = {
+    ...settings,
+    ha: { ...settings.ha },
+  };
+  if (process.env.SUPERVISOR_TOKEN && toStore.ha.token === process.env.SUPERVISOR_TOKEN) {
+    toStore.ha.token = "";
+  }
+  await writeJsonFile(settingsFilePath(), toStore);
+}
+
+export function applySupervisorHaFallback(settings: GlobalSettings): GlobalSettings {
+  if (settings.ha.token) return settings;
+  const token = process.env.SUPERVISOR_TOKEN;
+  if (!token) return settings;
+  return {
+    ...settings,
+    ha: {
+      url: settings.ha.url || "http://supervisor/core",
+      token,
+    },
+  };
 }
 
 function mergeSettings(
