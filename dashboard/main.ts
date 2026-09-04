@@ -42,6 +42,7 @@ const ADMIN_USER_KEY = "maxxmeter-admin-user";
 
 const app = document.getElementById("app")!;
 let page = "overview";
+let renderSeq = 0;
 let me: Me | null = null;
 let adminUsers: DashboardUser[] = [];
 
@@ -308,19 +309,21 @@ async function renderSettings(): Promise<string> {
 }
 
 async function render(): Promise<void> {
+  const seq = ++renderSeq;
+  const current = page;
   try {
-    if (page === "overview") app.innerHTML = await renderOverview();
-    else if (page === "accounts") {
-      app.innerHTML = await renderAccounts();
-      bindAccountActions();
-    } else if (page === "panels") {
-      app.innerHTML = await renderPanels();
-      bindPanelActions();
-    } else {
-      app.innerHTML = await renderSettings();
-      bindSettingsActions();
-    }
+    let html: string;
+    if (current === "overview") html = await renderOverview();
+    else if (current === "accounts") html = await renderAccounts();
+    else if (current === "panels") html = await renderPanels();
+    else html = await renderSettings();
+    if (seq !== renderSeq) return;
+    app.innerHTML = html;
+    if (current === "accounts") bindAccountActions();
+    else if (current === "panels") bindPanelActions();
+    else if (current === "settings") bindSettingsActions();
   } catch (err) {
+    if (seq !== renderSeq) return;
     app.innerHTML = `<div class="card"><p>Failed to load: ${escapeHtml(err instanceof Error ? err.message : String(err))}</p></div>`;
   }
 }
