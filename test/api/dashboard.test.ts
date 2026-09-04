@@ -5,6 +5,8 @@ import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createDashboardServer } from "../../src/api/dashboard.js";
 import { UsagePoller } from "../../src/poller.js";
+import { createAccount } from "../../src/accounts/registry.js";
+import { createPanel } from "../../src/panels/registry.js";
 
 const dashboardDist = fileURLToPath(new URL("../../dashboard/dist", import.meta.url));
 
@@ -135,6 +137,55 @@ describe("dashboard ingress shell", () => {
     expect(res.headers.location).toBe(
       "/api/hassio_ingress/abc123/accounts?oauth=manual&provider=cursor",
     );
+    await app.close();
+  });
+});
+
+describe("dashboard users", () => {
+  it("lists account owners and panel-only owners for admins", async () => {
+    await createAccount({
+      provider: "claude",
+      label: "Ada Claude",
+      ownerUserId: "ada",
+      ownerUserName: "Ada",
+    });
+    await createPanel({
+      label: "Office",
+      deviceProfile: "nspanel-us-portrait",
+      ownerUserId: "panel-only",
+      accountIds: [],
+    });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/dashboard/users",
+      headers: {
+        "x-remote-user-id": "admin",
+        "x-remote-user-name": "Admin",
+        "x-remote-user-is-admin": "true",
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual([
+      { userId: "ada", userName: "Ada" },
+      { userId: "panel-only", userName: "panel-only" },
+    ]);
+    await app.close();
+  });
+
+  it("forbids non-admins from listing users", async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/dashboard/users",
+      headers: {
+        "x-remote-user-id": "ada",
+        "x-remote-user-is-admin": "false",
+      },
+    });
+    expect(res.statusCode).toBe(403);
     await app.close();
   });
 });

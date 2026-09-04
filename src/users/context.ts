@@ -43,6 +43,24 @@ export function resolveTargetUserId(
   return ctx.userId;
 }
 
+export function mergeDashboardUsers(
+  accounts: { ownerUserId: string; ownerUserName?: string }[],
+  panels: { ownerUserId: string }[],
+): { userId: string; userName: string }[] {
+  const byUser = new Map<string, string>();
+  for (const panel of panels) {
+    if (!byUser.has(panel.ownerUserId)) {
+      byUser.set(panel.ownerUserId, panel.ownerUserId);
+    }
+  }
+  for (const account of accounts) {
+    byUser.set(account.ownerUserId, account.ownerUserName ?? account.ownerUserId);
+  }
+  return [...byUser.entries()]
+    .map(([userId, userName]) => ({ userId, userName }))
+    .sort((a, b) => a.userName.localeCompare(b.userName));
+}
+
 function headerString(req: FastifyRequest, name: string): string | undefined {
   const value = req.headers[name];
   if (Array.isArray(value)) return value[0];
