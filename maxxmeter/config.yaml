@@ -1,5 +1,5 @@
 name: MaxxMeter
-version: "0.1.0"
+version: "0.1.1"
 slug: maxxmeter
 description: Token maxxing dashboard for Sonoff NSPanel — Cursor, Claude, Kimi usage
 url: https://github.com/dougrathbone/maxx-meter

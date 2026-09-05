@@ -1,8 +1,8 @@
-# Office panel — US portrait (320x480)
-# IMPORTANT: set `name` to match your existing ESPHome device name exactly.
+# Office panel - US portrait (320x480)
+# IMPORTANT: `name` must match your existing ESPHome device name exactly.
 
 substitutions:
-  name: office-panel
+  name: office_nspanel
   friendly_name: Office panel
   device_profile: nspanel-us-portrait
   nextion_update_url: !secret nextion_update_url_us

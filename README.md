@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/dougrathbone/maxx-meter/actions/workflows/ci.yml/badge.svg)](https://github.com/dougrathbone/maxx-meter/actions/workflows/ci.yml)
 
-**Token maxxing, on your wall.**
+**Token maxing, on your desk.**
 
 MaxxMeter turns classic Sonoff NSPanels (ESP32 + Nextion) into live AI subscription usage dashboards for **Cursor**, **Claude**, and **Kimi Coding** plans.
 
