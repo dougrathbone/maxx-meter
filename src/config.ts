@@ -18,6 +18,7 @@ export function isHaAddOnOptions(raw: Record<string, unknown>): boolean {
     "poll_interval_seconds" in raw ||
     "mqtt_host" in raw ||
     "mqtt_port" in raw ||
+    "mqtt_tls" in raw ||
     "ha_url" in raw ||
     "ha_token" in raw ||
     "bootstrap_office_panel" in raw
@@ -95,6 +96,8 @@ function settingsFromEnv(): Record<string, unknown> {
   if (process.env.MQTT_USERNAME) mqtt.username = process.env.MQTT_USERNAME;
   if (process.env.MQTT_PASSWORD) mqtt.password = process.env.MQTT_PASSWORD;
   if (process.env.MQTT_TOPIC_PREFIX) mqtt.topicPrefix = process.env.MQTT_TOPIC_PREFIX;
+  if (process.env.MQTT_TLS === "true") mqtt.tls = true;
+  if (process.env.MQTT_TLS === "false") mqtt.tls = false;
 
   const ha: Partial<GlobalSettings["ha"]> = {};
   if (process.env.HA_URL) ha.url = process.env.HA_URL;

@@ -29,6 +29,7 @@ beforeEach(async () => {
     "OPTIONS_PATH",
     "MAXXMETER_SETTINGS_PATH",
     "SUPERVISOR_TOKEN",
+    "MQTT_TLS",
   ]);
   process.env.MAXXMETER_DATA_DIR = dataDir;
   delete process.env.MQTT_HOST;
@@ -36,6 +37,7 @@ beforeEach(async () => {
   delete process.env.OPTIONS_PATH;
   delete process.env.MAXXMETER_SETTINGS_PATH;
   delete process.env.SUPERVISOR_TOKEN;
+  delete process.env.MQTT_TLS;
 });
 
 afterEach(async () => {
@@ -61,6 +63,16 @@ describe("overlayHaOptions", () => {
     expect(next.mqtt.host).toBe("core-mosquitto");
     expect(next.mqtt.password).toBe("secret");
     expect(next.ha.token).toBe("token");
+    expect(next.mqtt.tls).toBe(false);
+  });
+
+  it("applies mqtt_tls from add-on options", () => {
+    const next = overlayHaOptions(
+      { ...base, mqtt: { ...base.mqtt, tls: false } },
+      { mqtt_tls: true },
+    );
+    expect(next.mqtt.tls).toBe(true);
+    expect(next.mqtt.host).toBe("broker.local");
   });
 });
 
@@ -159,5 +171,13 @@ describe("SUPERVISOR_TOKEN", () => {
       ha: { token: string };
     };
     expect(onDisk.ha.token).toBe("");
+  });
+});
+
+describe("MQTT_TLS env", () => {
+  it("enables TLS from MQTT_TLS=true", async () => {
+    process.env.MQTT_TLS = "true";
+    const loaded = await loadSettings();
+    expect(loaded.mqtt.tls).toBe(true);
   });
 });
