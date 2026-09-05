@@ -1,7 +1,7 @@
 # Office panel TFT prep + animated US portrait UI
 
 **Date:** 2026-09-05  
-**Status:** Approved (conversation) — pending user review of this written spec  
+**Status:** Written and committed — awaiting user review before implementation plan  
 **Scope:** Prepare MaxxMeter US portrait TFT path for `office_nspanel` so the operator only fills config; interim TFT hosting; animated Nextion layout for the real MaxxMeter UI.
 
 ## Goal
