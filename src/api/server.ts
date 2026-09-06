@@ -1,7 +1,14 @@
 import Fastify from "fastify";
 import type { UsagePoller } from "../poller.js";
-import { getPanel, panelAuthOk, updatePanel } from "../panels/registry.js";
-import { loadSettings } from "../config.js";
+import {
+  createPanel,
+  getPanel,
+  listPanels,
+  panelAuthOk,
+  UNASSIGNED_PANEL_OWNER,
+  updatePanel,
+} from "../panels/registry.js";
+import { loadHaOptionsFile, loadSettings } from "../config.js";
 import type { PanelUsageResponse } from "../models.js";
 
 export function createPanelServer(poller: UsagePoller) {
@@ -12,6 +19,44 @@ export function createPanelServer(poller: UsagePoller) {
     service: "maxxmeter",
     snapshots: poller.getSnapshots().length,
   }));
+
+  /** LAN first-run helper: create or return the bootstrapped office panel credentials. */
+  app.post("/api/v1/setup/office-panel", async (req, reply) => {
+    const options = await loadHaOptionsFile();
+    if (options.bootstrap_office_panel !== true) {
+      return reply.code(403).send({ error: "bootstrap_office_panel is disabled" });
+    }
+
+    const existing = await listPanels();
+    const office =
+      existing.find((p) => p.label === "Office panel" && p.deviceProfile === "nspanel-us-portrait") ??
+      existing.find((p) => p.deviceProfile === "nspanel-us-portrait") ??
+      existing[0];
+
+    if (office) {
+      return {
+        created: false,
+        panel_id: office.id,
+        panel_api_key: office.apiKey,
+        label: office.label,
+        deviceProfile: office.deviceProfile,
+      };
+    }
+
+    const panel = await createPanel({
+      label: "Office panel",
+      deviceProfile: "nspanel-us-portrait",
+      ownerUserId: UNASSIGNED_PANEL_OWNER,
+      accountIds: [],
+    });
+    return {
+      created: true,
+      panel_id: panel.id,
+      panel_api_key: panel.apiKey,
+      label: panel.label,
+      deviceProfile: panel.deviceProfile,
+    };
+  });
 
   app.get<{ Params: { panelId: string } }>(
     "/api/v1/panels/:panelId/health",

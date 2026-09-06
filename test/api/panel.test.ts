@@ -140,4 +140,47 @@ describe("panel API", () => {
     expect(res.json()).toMatchObject({ ok: true, service: "maxxmeter" });
     await app.close();
   });
+
+  it("setup office-panel creates credentials when bootstrap is enabled", async () => {
+    const { writeFile } = await import("node:fs/promises");
+    await writeFile(
+      join(dataDir, "options.json"),
+      JSON.stringify({ bootstrap_office_panel: true }),
+      "utf8",
+    );
+    const poller = new MockPoller([]);
+    const app = createPanelServer(poller);
+    await app.ready();
+
+    const created = await app.inject({ method: "POST", url: "/api/v1/setup/office-panel" });
+    expect(created.statusCode).toBe(200);
+    const body = created.json() as {
+      created: boolean;
+      panel_id: string;
+      panel_api_key: string;
+      label: string;
+    };
+    expect(body.created).toBe(true);
+    expect(body.label).toBe("Office panel");
+    expect(body.panel_id).toMatch(/^panel_/);
+    expect(body.panel_api_key.length).toBeGreaterThan(8);
+
+    const again = await app.inject({ method: "POST", url: "/api/v1/setup/office-panel" });
+    expect(again.statusCode).toBe(200);
+    const body2 = again.json() as { created: boolean; panel_id: string; panel_api_key: string };
+    expect(body2.created).toBe(false);
+    expect(body2.panel_id).toBe(body.panel_id);
+    expect(body2.panel_api_key).toBe(body.panel_api_key);
+    await app.close();
+  });
+
+  it("setup office-panel rejects when bootstrap is disabled", async () => {
+    const poller = new MockPoller([]);
+    const app = createPanelServer(poller);
+    await app.ready();
+
+    const res = await app.inject({ method: "POST", url: "/api/v1/setup/office-panel" });
+    expect(res.statusCode).toBe(403);
+    await app.close();
+  });
 });
