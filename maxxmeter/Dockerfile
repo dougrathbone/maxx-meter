@@ -4,11 +4,14 @@ FROM ${BUILD_FROM}
 
 ARG GITHUB_REPOSITORY="dougrathbone/maxx-meter"
 ARG GITHUB_REF="main"
+# Bump to bust Docker layer cache when main tip changes without a tag bump.
+ARG CACHEBUST="1"
 
 RUN apk add --no-cache nodejs npm git
 
 WORKDIR /app
-RUN git clone --depth 1 --branch "${GITHUB_REF}" "https://github.com/${GITHUB_REPOSITORY}.git" /tmp/src \
+RUN echo "cachebust=${CACHEBUST}" \
+  && git clone --depth 1 --branch "${GITHUB_REF}" "https://github.com/${GITHUB_REPOSITORY}.git" /tmp/src \
   && cp -a /tmp/src/. /app/ \
   && rm -rf /tmp/src
 
