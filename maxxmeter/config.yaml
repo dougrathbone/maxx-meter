@@ -28,6 +28,7 @@ options:
   mqtt_username: ""
   mqtt_password: ""
   mqtt_topic_prefix: maxxmeter
+  mqtt_tls: false
   ha_url: http://supervisor/core
   ha_token: ""
   bootstrap_office_panel: false
@@ -40,6 +41,7 @@ schema:
   mqtt_username: str
   mqtt_password: password
   mqtt_topic_prefix: str
+  mqtt_tls: bool
   ha_url: url
   ha_token: password
   bootstrap_office_panel: bool

@@ -11,6 +11,8 @@ Add-on options (MQTT, poll interval, HA token) are applied on **startup** into
 `/data/settings.json`. The dashboard Settings tab writes that same file and does
 **not** overwrite Supervisor's `/data/options.json`. Leave MQTT password / HA token
 blank in add-on options to keep a value already saved in the dashboard.
+Enable **MQTT TLS** when the broker expects `mqtts` (often port 8883); leave it
+off for the default Home Assistant Mosquitto add-on on `core-mosquitto:1883`.
 
 On Home Assistant, leave **HA token** empty to use the add-on's `SUPERVISOR_TOKEN`
 for Core notifications. A panel created by **bootstrap_office_panel** is claimed

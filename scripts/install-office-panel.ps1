@@ -107,6 +107,7 @@ $options = @{
   mqtt_username = ""
   mqtt_password = ""
   mqtt_topic_prefix = "maxxmeter"
+  mqtt_tls = $false
   ha_url = "http://supervisor/core"
   ha_token = $HaToken
   bootstrap_office_panel = $true

@@ -6,6 +6,11 @@ import {
   mqttOfflinePayload,
 } from "./messages.js";
 
+export function mqttBrokerUrl(mqtt: GlobalSettings["mqtt"]): string {
+  const scheme = mqtt.tls ? "mqtts" : "mqtt";
+  return `${scheme}://${mqtt.host}:${mqtt.port}`;
+}
+
 export class MqttPublisher {
   private client: mqtt.MqttClient | null = null;
   private lastSettings: GlobalSettings | null = null;
@@ -29,12 +34,13 @@ export class MqttPublisher {
   }
 
   private openClient(settings: GlobalSettings): void {
-    const url = `mqtt://${settings.mqtt.host}:${settings.mqtt.port}`;
+    const url = mqttBrokerUrl(settings.mqtt);
     const prefix = settings.mqtt.topicPrefix;
     this.client = mqtt.connect(url, {
       username: settings.mqtt.username || undefined,
       password: settings.mqtt.password || undefined,
       reconnectPeriod: 5000,
+      rejectUnauthorized: true,
       will: {
         topic: availabilityTopic(prefix),
         payload: mqttOfflinePayload(),
@@ -44,6 +50,9 @@ export class MqttPublisher {
     });
     this.client.on("connect", () => {
       this.flush();
+    });
+    this.client.on("error", (err) => {
+      console.error(`MQTT ${url}: ${err.message}`);
     });
   }
 
