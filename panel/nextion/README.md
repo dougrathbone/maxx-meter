@@ -33,6 +33,14 @@ Set **vscope: global** on all ESPHome-updated components. Bar fill color (`.pco`
 
 ## Compile and upload TFT
 
+## Office panel (US) — start here
+
+1. `.\scripts\prepare-office-panel.ps1 -Mode interim`
+2. Build animated UI from [maxxmeter-us-portrait-layout.md](./maxxmeter-us-portrait-layout.md)
+3. `.\scripts\prepare-office-panel.ps1 -Mode final`
+
+Walkthrough: [OFFICE-PANEL-FLASH.md](./OFFICE-PANEL-FLASH.md)
+
 1. Install [Nextion Editor](https://nextion.tech/nextion-editor/)
 2. Follow the build checklist in the matching layout spec
 3. Compile → `.tft`
@@ -53,8 +61,9 @@ Each profile YAML defines a substitution placeholder. Set it in `secrets.yaml` o
 
 ```yaml
 # secrets.yaml
-nextion_update_url_eu: "http://homeassistant.local:8123/local/maxxmeter_eu.tft"
-nextion_update_url_us: "http://homeassistant.local:8123/local/maxxmeter_us_portrait.tft"
+nextion_update_url_eu: "http://192.168.1.7:8123/local/maxxmeter_eu.tft"
+nextion_update_url_us: "http://192.168.1.7:8123/local/maxxmeter_us_portrait_interim.tft"
+# nextion_update_url_us: "http://192.168.1.7:8123/local/maxxmeter_us_portrait.tft"
 ```
 
 Profile files pass this into the display component:
