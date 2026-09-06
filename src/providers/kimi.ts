@@ -1,4 +1,5 @@
 import type { Account, GlobalSettings, StoredCredential, UsageSnapshot } from "../models.js";
+import { USER_AGENT } from "../version.js";
 import {
   ProviderHttpError,
   errorSnapshot,
@@ -32,7 +33,7 @@ export const kimiProvider: Provider = {
       const res = await fetch("https://api.kimi.com/coding/v1/usages", {
         headers: {
           Authorization: `Bearer ${credential.accessToken}`,
-          "User-Agent": "MaxxMeter/0.1",
+          "User-Agent": USER_AGENT,
         },
       });
 

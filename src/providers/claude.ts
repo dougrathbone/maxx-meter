@@ -1,4 +1,5 @@
 import type { Account, GlobalSettings, StoredCredential, UsageSnapshot } from "../models.js";
+import { USER_AGENT } from "../version.js";
 import {
   ProviderHttpError,
   errorSnapshot,
@@ -30,7 +31,7 @@ export const claudeProvider: Provider = {
         headers: {
           Authorization: `Bearer ${credential.accessToken}`,
           "anthropic-beta": "oauth-2025-04-20",
-          "User-Agent": "MaxxMeter/0.1",
+          "User-Agent": USER_AGENT,
         },
       });
 
