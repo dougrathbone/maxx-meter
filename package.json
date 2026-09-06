@@ -1,7 +1,7 @@
 {
   "name": "maxx-meter",
-  "version": "0.1.4",
-  "description": "Token maxxing usage dashboard for Sonoff NSPanel â€” Cursor, Claude, Kimi",
+  "version": "0.1.5",
+  "description": "Token maxxing usage dashboard for Sonoff NSPanel Ã¢â‚¬â€ Cursor, Claude, Kimi",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {

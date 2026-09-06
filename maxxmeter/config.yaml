@@ -1,5 +1,5 @@
 name: MaxxMeter
-version: "0.1.4"
+version: "0.1.5"
 slug: maxxmeter
 description: Token maxxing dashboard for Sonoff NSPanel — Cursor, Claude, Kimi usage
 url: https://github.com/dougrathbone/maxx-meter
@@ -48,4 +48,3 @@ map:
 args:
   GITHUB_REPOSITORY: dougrathbone/maxx-meter
   GITHUB_REF: main
-  CACHEBUST: "vite6-musl"
