@@ -137,7 +137,7 @@ describe("panel API", () => {
 
     const res = await app.inject({ method: "GET", url: "/api/v1/health" });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toMatchObject({ ok: true, service: "maxxmeter" });
+    expect(res.json()).toEqual({ ok: true, service: "maxxmeter" });
     await app.close();
   });
 });

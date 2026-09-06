@@ -10,7 +10,6 @@ export function createPanelServer(poller: UsagePoller) {
   app.get("/api/v1/health", async () => ({
     ok: true,
     service: "maxxmeter",
-    snapshots: poller.getSnapshots().length,
   }));
 
   app.get<{ Params: { panelId: string } }>(
