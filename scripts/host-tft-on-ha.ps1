@@ -4,7 +4,7 @@
 #   .\scripts\host-tft-on-ha.ps1 -Mode interim
 #   .\scripts\host-tft-on-ha.ps1 -Mode final
 # EU:
-#   .\scripts\host-tft-on-ha.ps1 -TftPath panel\nextion\starter\nspanel_blank.tft -RemoteName maxxmeter_eu.tft -SecretKey nextion_update_url_eu
+#   .\scripts\host-tft-on-ha.ps1 -Mode custom -TftPath panel\nextion\starter\nspanel_blank.tft -RemoteName maxxmeter_eu.tft -SecretKey nextion_update_url_eu
 
 param(
   [string]$HaHost = "192.168.1.7",
@@ -18,6 +18,13 @@ param(
 
 $ErrorActionPreference = "Stop"
 $Root = Resolve-Path (Join-Path $PSScriptRoot "..")
+$TftPathExplicit = $PSBoundParameters.ContainsKey("TftPath")
+$RemoteNameExplicit = $PSBoundParameters.ContainsKey("RemoteName")
+$SecretKeyExplicit = $PSBoundParameters.ContainsKey("SecretKey")
+
+if ($TftPathExplicit -and $RemoteNameExplicit) {
+  $Mode = "custom"
+}
 
 switch ($Mode) {
   "interim" {
@@ -35,6 +42,9 @@ switch ($Mode) {
   "custom" {
     if (-not $TftPath -or -not $RemoteName) {
       Write-Error "Mode custom requires -TftPath and -RemoteName"
+    }
+    if (-not $SecretKeyExplicit) {
+      $SecretKey = "nextion_update_url_custom"
     }
   }
 }
@@ -62,7 +72,12 @@ Write-Host "   ${SecretKey}: `"$Url`""
 Write-Host ""
 Write-Host "4. OTA flash ESPHome so the panel downloads the TFT:"
 Write-Host "   cd panel\esphome"
-Write-Host "   esphome run office-panel.yaml"
+if ($SecretKey -eq "nextion_update_url_us") {
+  Write-Host "   esphome run office-panel.yaml"
+} else {
+  Write-Host "   esphome run <profile-yaml>"
+  Write-Host "   (choose the profile that uses !secret $SecretKey)"
+}
 Write-Host ""
 
 if (-not $SkipVerify) {

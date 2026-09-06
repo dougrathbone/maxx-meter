@@ -47,12 +47,6 @@ Same as EU — see [maxxmeter-eu-layout.md](./maxxmeter-eu-layout.md#color-palet
 | --- | --- | --- | --- | --- | --- | --- |
 | `r_accent` | Rectangle | 12 | 44 | 296 | 3 | Fill `#7C6BF0`; breathe target |
 
-### Status heartbeat glyph (status page)
-
-| Component | Type | x | y | w | h | Text | Font | pco |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `t_heart` | Text | 280 | 16 | 28 | 28 | ● | font1 | `#888899` |
-
 ### Primary account (ESPHome)
 
 | Component | Type | x | y | w | h | Font | pco | Notes |
@@ -109,6 +103,12 @@ Stacked vertically below status line.
 | `l_poll` | Text | 12 | 130 | 200 | 18 | Poll: 60s | font0 | `#888899` | Static |
 | `t0` | Text | 12 | 420 | 296 | 24 | font0 | `#888899` | Panel label |
 
+### Status heartbeat glyph
+
+| Component | Type | x | y | w | h | Text | Font | pco |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `t_heart` | Text | 280 | 16 | 28 | 28 | ● | font1 | `#888899` |
+
 ---
 
 ## Component index
@@ -121,6 +121,8 @@ Identical to EU — see [maxxmeter-eu-layout.md — Component index](./maxxmeter
 
 Do **not** rename ESPHome components. Add timers below on the named pages. All timers: **vscope global** where the Editor allows.
 
+Nextion `pco`/`bco` use RGB565, not 24-bit CSS hex.
+
 ### Shared variables (Program.s or page globals)
 
 Create numeric globals:
@@ -129,9 +131,10 @@ Create numeric globals:
 | --- | --- | --- |
 | `va_breathe` | 0 | Boot breathe cycle counter |
 | `va_bar_step` | 0 | Bar settle step 0–8 |
-| `va_j0_target` | 0 | Last session % (updated when ESPHome sets j0, optional manual mirror) |
-| `va_j1_target` | 0 | Last weekly % |
-| `va_crit` | 0 | 1 while critical pulse active |
+| `va_j0_target` | 0 | Session % captured when the overview page opens |
+| `va_j1_target` | 0 | Weekly % captured when the overview page opens |
+| `va_j0_crit` | 0 | Session critical pulse toggle |
+| `va_j1_crit` | 0 | Weekly critical pulse toggle |
 | `va_heart` | 0 | Heartbeat toggle |
 
 > ESPHome overwrites `j0`/`j1` on poll. Bar settle is cosmetic on page show; overwrites mid-animation are OK.
@@ -147,14 +150,18 @@ Create numeric globals:
 
 ### `overview` Preinitialize / show events
 
-**Page `overview` → Event → Preinitialize (or Postinitialize):**
+**Page `overview` → Event → Postinitialize:**
 
 ```
 va_breathe.val=0
 va_bar_step.val=0
+va_j0_crit.val=0
+va_j1_crit.val=0
+va_j0_target.val=j0.val
+va_j1_target.val=j1.val
 j0.val=0
 j1.val=0
-t0.pco=0x888899
+t0.pco=0x8C53
 tm_breathe.en=1
 tm_bar.en=1
 tm_crit.en=1
@@ -167,18 +174,18 @@ if(va_breathe.val<8)
 {
   if(va_breathe.val%2==0)
   {
-    t_hdr.pco=0x7C6BF0
-    r_accent.bco=0x7C6BF0
+    t_hdr.pco=0x7B5E
+    r_accent.bco=0x7B5E
   }else
   {
-    t_hdr.pco=0x4A4080
-    r_accent.bco=0x4A4080
+    t_hdr.pco=0x4A10
+    r_accent.bco=0x4A10
   }
   va_breathe.val++
 }else
 {
-  t_hdr.pco=0x7C6BF0
-  r_accent.bco=0x7C6BF0
+  t_hdr.pco=0x7B5E
+  r_accent.bco=0x7B5E
   tm_breathe.en=0
 }
 ```
@@ -189,12 +196,13 @@ if(va_breathe.val<8)
 if(va_bar_step.val<8)
 {
   va_bar_step.val++
+  j0.val=va_j0_target.val*va_bar_step.val/8
+  j1.val=va_j1_target.val*va_bar_step.val/8
   // Soft enter for title
   if(va_bar_step.val==2)
   {
-    t0.pco=0xE8E8F0
+    t0.pco=0xEF5E
   }
-  // If ESPHome already wrote targets, bars jump forward; otherwise stay until poll
 }else
 {
   tm_bar.en=0
@@ -206,29 +214,33 @@ if(va_bar_step.val<8)
 ```
 if(j0.val>=90)
 {
-  if(va_crit.val==0)
+  if(va_j0_crit.val==0)
   {
-    j0.pco=0xEF4444
-    va_crit.val=1
+    j0.pco=0xEA28
+    va_j0_crit.val=1
   }else
   {
-    j0.pco=0x991B1B
-    va_crit.val=0
-  }
-}else if(j1.val>=90)
-{
-  if(va_crit.val==0)
-  {
-    j1.pco=0xEF4444
-    va_crit.val=1
-  }else
-  {
-    j1.pco=0x991B1B
-    va_crit.val=0
+    j0.pco=0x98C3
+    va_j0_crit.val=0
   }
 }else
 {
-  va_crit.val=0
+  va_j0_crit.val=0
+}
+if(j1.val>=90)
+{
+  if(va_j1_crit.val==0)
+  {
+    j1.pco=0xEA28
+    va_j1_crit.val=1
+  }else
+  {
+    j1.pco=0x98C3
+    va_j1_crit.val=0
+  }
+}else
+{
+  va_j1_crit.val=0
 }
 ```
 
@@ -237,16 +249,16 @@ if(j0.val>=90)
 **Page `detail` → Preinitialize:**
 
 ```
-t0.pco=0x888899
+t0.pco=0x8C53
 ```
 
 **Page `detail` → Timer `tm_bar` (reuse or add page-local 50 ms, 3 ticks) / or Postinitialize delay via `tm_bar`:**
 
 ```
-t0.pco=0xE8E8F0
+t0.pco=0xEF5E
 ```
 
-Simplest: in `detail` Preinitialize set `t0.pco=0x888899`, then enable a page timer `tm_bar` for one 80 ms tick that sets `t0.pco=0xE8E8F0` and disables itself.
+Simplest: in `detail` Preinitialize set `t0.pco=0x8C53`, then enable a page timer `tm_bar` for one 80 ms tick that sets `t0.pco=0xEF5E` and disables itself.
 
 ### `status` heartbeat
 
@@ -254,7 +266,7 @@ Simplest: in `detail` Preinitialize set `t0.pco=0x888899`, then enable a page ti
 
 ```
 t_heart.txt="●"
-t_heart.pco=0x888899
+t_heart.pco=0x8C53
 va_heart.val=0
 tm_heart.en=1
 ```
@@ -264,11 +276,11 @@ tm_heart.en=1
 ```
 if(va_heart.val==0)
 {
-  t_heart.pco=0x22C55E
+  t_heart.pco=0x262B
   va_heart.val=1
 }else
 {
-  t_heart.pco=0x888899
+  t_heart.pco=0x8C53
   va_heart.val=0
 }
 ```

@@ -33,7 +33,7 @@ Set **vscope: global** on all ESPHome-updated components. Bar fill color (`.pco`
 
 ## Compile and upload TFT
 
-## Office panel (US) — start here
+### Office panel (US) — start here
 
 1. `.\scripts\prepare-office-panel.ps1 -Mode interim`
 2. Build animated UI from [maxxmeter-us-portrait-layout.md](./maxxmeter-us-portrait-layout.md)
@@ -52,8 +52,6 @@ Walkthrough: [OFFICE-PANEL-FLASH.md](./OFFICE-PANEL-FLASH.md)
 ### USB upload (first time)
 
 If OTA TFT upload is not configured yet, use [NSPanel-Easy](https://edwardtfn.github.io/NSPanel-Easy/) or Nextion Editor serial upload, then switch to OTA for updates.
-
-**Office panel walkthrough:** [OFFICE-PANEL-FLASH.md](./OFFICE-PANEL-FLASH.md) — USB flash scripts, HA hosting at `192.168.1.7`, ESPHome secrets.
 
 ## Wire `nextion_update_url` in ESPHome
 

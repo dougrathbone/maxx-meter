@@ -8,7 +8,8 @@
 param(
   [string]$HaHost = "192.168.1.7",
   [ValidateSet("interim", "final")]
-  [string]$Mode = "interim"
+  [string]$Mode = "interim",
+  [switch]$SkipVerify
 )
 
 $ErrorActionPreference = "Stop"
@@ -38,23 +39,50 @@ Or run with -Mode interim until the real UI is built.
 "@
 }
 
+$SecretsScaffolded = $false
 if (-not (Test-Path $SecretsPath)) {
   if (-not (Test-Path $ExampleSecrets)) {
     Write-Error "Missing template: $ExampleSecrets"
   }
   Copy-Item $ExampleSecrets $SecretsPath
+  $SecretsScaffolded = $true
   Write-Host "Created $SecretsPath from secrets.example.yaml"
 } else {
   Write-Host "Keeping existing secrets.yaml (not overwritten)"
 }
 
+if ($SecretsScaffolded -and $HaHost -ne "192.168.1.7") {
+  $Secrets = Get-Content $SecretsPath -Raw
+  $Secrets = $Secrets.Replace(
+    'collector_host: "192.168.1.7"',
+    "collector_host: `"$HaHost`""
+  )
+  $Secrets = $Secrets.Replace(
+    "http://192.168.1.7:8123/local/maxxmeter_us_portrait",
+    "http://${HaHost}:8123/local/maxxmeter_us_portrait"
+  )
+  [System.IO.File]::WriteAllText(
+    $SecretsPath,
+    $Secrets,
+    (New-Object System.Text.UTF8Encoding($false))
+  )
+  Write-Host "Updated new secrets.yaml HA host to $HaHost"
+}
+
 Write-Host ""
-& (Join-Path $PSScriptRoot "host-tft-on-ha.ps1") -HaHost $HaHost -Mode $Mode
+$HostArgs = @{
+  HaHost = $HaHost
+  Mode = $Mode
+}
+if ($SkipVerify) {
+  $HostArgs.SkipVerify = $true
+}
+& (Join-Path $PSScriptRoot "host-tft-on-ha.ps1") @HostArgs
 
 Write-Host ""
 Write-Host "=== Fill these secrets (only config you must add) ==="
 Write-Host "  wifi_ssid, wifi_password"
-Write-Host "  panel_id, panel_api_key, panel_api_key_bearer   (MaxxMeter → Panels)"
+Write-Host "  panel_id, panel_api_key, panel_api_key_bearer   (MaxxMeter -> Panels)"
 Write-Host "  api_encryption_key, ota_password               (existing office_nspanel ESPHome)"
 Write-Host "  nextion_update_url_us                          (printed above)"
 Write-Host ""
@@ -62,7 +90,7 @@ Write-Host "=== Then ==="
 Write-Host "  1. Copy the TFT into HA /config/www/ as instructed above"
 Write-Host "  2. cd panel\esphome"
 Write-Host "  3. esphome run office-panel.yaml"
-Write-Host "  4. MaxxMeter ingress → connect AI accounts"
+Write-Host "  4. MaxxMeter ingress -> connect AI accounts"
 Write-Host ""
 if ($Mode -eq "interim") {
   Write-Host "Note: interim TFT replaces stock UI; MaxxMeter bars need the full animated TFT."
