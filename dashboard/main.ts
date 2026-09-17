@@ -34,6 +34,7 @@ type Settings = {
     username: string;
     password: string;
     topicPrefix: string;
+    tls: boolean;
   };
   ha: { url: string; token: string };
 };
@@ -288,6 +289,7 @@ async function renderSettings(): Promise<string> {
             <label>Username <input type="text" id="mqtt-username" value="${escapeHtml(s.mqtt.username)}" /></label>
             <label>Password <input type="password" id="mqtt-password" placeholder="${escapeHtml(pwdPlaceholder)}" autocomplete="new-password" /></label>
             <label>Topic prefix <input type="text" id="mqtt-topicPrefix" value="${escapeHtml(s.mqtt.topicPrefix)}" /></label>
+            <label class="checkbox-row"><input type="checkbox" id="mqtt-tls"${s.mqtt.tls ? " checked" : ""} /> Use TLS (mqtts, typically port 8883)</label>
           </div>
         </div>
         <div class="form-section">
@@ -461,6 +463,7 @@ function bindSettingsActions(): void {
         username: (document.getElementById("mqtt-username") as HTMLInputElement).value,
         password: mqttPassword || "***",
         topicPrefix: (document.getElementById("mqtt-topicPrefix") as HTMLInputElement).value,
+        tls: (document.getElementById("mqtt-tls") as HTMLInputElement).checked,
       },
       ha: {
         url: (document.getElementById("ha-url") as HTMLInputElement).value,

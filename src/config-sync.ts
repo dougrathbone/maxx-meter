@@ -32,6 +32,7 @@ export function overlayHaOptions(
       username: nonEmptyString(options.mqtt_username) ?? current.mqtt.username,
       password: nonEmptyString(options.mqtt_password) ?? current.mqtt.password,
       topicPrefix: nonEmptyString(options.mqtt_topic_prefix) ?? current.mqtt.topicPrefix,
+      tls: typeof options.mqtt_tls === "boolean" ? options.mqtt_tls : current.mqtt.tls,
     },
     ha: {
       url: nonEmptyString(options.ha_url) ?? current.ha.url,
