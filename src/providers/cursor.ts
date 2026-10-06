@@ -1,4 +1,5 @@
 import type { Account, GlobalSettings, StoredCredential, UsageSnapshot } from "../models.js";
+import { USER_AGENT } from "../version.js";
 import {
   ProviderHttpError,
   errorSnapshot,
@@ -35,7 +36,7 @@ export const cursorProvider: Provider = {
           Cookie: cookie,
           Origin: "https://cursor.com",
           "Content-Type": "application/json",
-          "User-Agent": "MaxxMeter/0.1",
+          "User-Agent": USER_AGENT,
         },
         body: "{}",
       });

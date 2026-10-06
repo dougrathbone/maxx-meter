@@ -17,7 +17,6 @@ export function createPanelServer(poller: UsagePoller) {
   app.get("/api/v1/health", async () => ({
     ok: true,
     service: "maxxmeter",
-    snapshots: poller.getSnapshots().length,
   }));
 
   /** LAN first-run helper: create or return the bootstrapped office panel credentials. */
