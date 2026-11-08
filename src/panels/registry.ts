@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { join } from "node:path";
 import type { DeviceProfile, Panel } from "../models.js";
 import { PanelSchema } from "../models.js";
@@ -96,5 +97,9 @@ export async function claimUnassignedPanels(userId: string): Promise<number> {
 export function panelAuthOk(panel: Panel, authHeader?: string): boolean {
   if (!authHeader) return false;
   const token = authHeader.replace(/^Bearer\s+/i, "").trim();
-  return token.length > 0 && token === panel.apiKey;
+  if (!token) return false;
+  const presented = Buffer.from(token);
+  const expected = Buffer.from(panel.apiKey);
+  if (presented.length !== expected.length) return false;
+  return timingSafeEqual(presented, expected);
 }
